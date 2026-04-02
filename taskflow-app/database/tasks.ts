@@ -24,3 +24,11 @@ export function createTask(input: { title: string; description: string; priority
     // etorna o valor NOT NULL
     return tarefa!;
 };
+
+export function deleteTask(id: number) {
+
+    db.runSync(
+        'DELETE FROM tasks WHERE id = ?', [id]
+    );
+
+}
