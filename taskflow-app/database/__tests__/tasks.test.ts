@@ -1,6 +1,6 @@
 // TDD das tasks
 
-import { createTask, deleteTask } from "../tasks";
+import { createTask, deleteTask, editTask } from "../tasks";
 
 import * as SQLite from 'expo-sqlite';
 
@@ -32,5 +32,23 @@ describe('DeleteTask', () => {
         expect(db.runSync).toHaveBeenCalledWith(
             'DELETE FROM tasks WHERE id = ?', [1]
         );
+    });
+});
+
+describe('EditTask', () => {
+    it('Editar título, descrição ou prioridade de uma tarefa específica com base no ID', () => {
+        
+        const input = {
+            title: 'Jogar',
+            description: 'Jogar Resident Evil 9',
+            priority: 'low'
+        }
+
+        editTask(1, input);
+
+        expect(db.runSync).toHaveBeenCalledWith(
+            'UPDATE tasks SET title = ?, description = ?, priority = ? WHERE id = ?', ['Jogar', 'Jogar Resident Evil 9', 'low', 1]
+        );
+
     });
 });
