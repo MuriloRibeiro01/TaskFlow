@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import { initDatabase } from 'database/schemas';
+import { initDatabase } from '@/database/schemas';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useEffect } from 'react';
