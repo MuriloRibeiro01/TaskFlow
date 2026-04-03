@@ -32,3 +32,12 @@ export function deleteTask(id: number) {
     );
 
 }
+
+export function editTask(id: number, input: { title: string; description: string; priority: string}) {
+    
+    db.runSync(
+        'UPDATE tasks SET title = ?, description = ?, priority = ? WHERE id = ?',
+        [input.title, input.description, input.priority, id]
+    )
+    
+}
