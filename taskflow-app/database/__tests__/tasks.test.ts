@@ -1,6 +1,6 @@
 // TDD das tasks
 
-import { createTask, deleteTask, editTask } from "../tasks";
+import { completeTask, createTask, deleteTask, editTask } from "../tasks";
 
 import * as SQLite from 'expo-sqlite';
 
@@ -48,6 +48,18 @@ describe('EditTask', () => {
 
         expect(db.runSync).toHaveBeenCalledWith(
             'UPDATE tasks SET title = ?, description = ?, priority = ? WHERE id = ?', ['Jogar', 'Jogar Resident Evil 9', 'low', 1]
+        );
+
+    });
+});
+
+describe('CompleteTask', () => {
+    it('Editar o completed_at marcando a tarefa como completa', () => {
+        
+        completeTask(1);
+
+        expect(db.runSync).toHaveBeenCalledWith(
+            'UPDATE tasks SET status = ?, completed_at = datetime("now") WHERE id = ?', ['done', 1]
         );
 
     });
