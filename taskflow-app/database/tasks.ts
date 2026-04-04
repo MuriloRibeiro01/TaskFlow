@@ -41,3 +41,9 @@ export function editTask(id: number, input: { title: string; description: string
     )
     
 }
+
+export function completeTask(id: number) {
+    db.runSync(
+        'UPDATE tasks SET status = ?, completed_at = datetime("now") WHERE id = ?', ['done', id]
+    )
+}
