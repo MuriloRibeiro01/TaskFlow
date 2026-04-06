@@ -24,3 +24,26 @@ export function createTask(input: { title: string; description: string; priority
     // etorna o valor NOT NULL
     return tarefa!;
 };
+
+export function deleteTask(id: number) {
+
+    db.runSync(
+        'DELETE FROM tasks WHERE id = ?', [id]
+    );
+
+}
+
+export function editTask(id: number, input: { title: string; description: string; priority: string}) {
+    
+    db.runSync(
+        'UPDATE tasks SET title = ?, description = ?, priority = ? WHERE id = ?',
+        [input.title, input.description, input.priority, id]
+    )
+    
+}
+
+export function completeTask(id: number) {
+    db.runSync(
+        'UPDATE tasks SET status = ?, completed_at = datetime("now") WHERE id = ?', ['done', id]
+    )
+}
