@@ -22,3 +22,16 @@ describe('CreateSession', () => {
         expect(pomodoroCriado.type).toBe('focus');
     })
 })
+
+describe('CompleteSession', () => {
+    it('Acessa uma sessão de pomodoro aberta pelo ID e conclui.', () => {
+        completeSession(1);
+
+        expect(db.runSync).toHaveBeenCalledWith(
+            `UPDATE pomodoro_sessions 
+         SET status = 'completed', 
+             ended_at = datetime('now'),
+             duration_minutes = ROUND((julianday('now') - julianday(started_at)) * 1440)
+         WHERE id = ?`, [1])
+    })
+})
