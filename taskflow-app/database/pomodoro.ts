@@ -1,18 +1,6 @@
-// Controle do Pomodoro!
+import * as SQLite from 'expo-sqlite';
 
-export type PomodoroSession = {
-    id: number;
-    task_id: number;
-    type: 'focus' | 'break';
-    status: 'running' | 'completed' | 'cancelled';
-    started_at: string;
-    ended_at: string | null;
-    duration_minutes: number;
-}
-
-// // // // // // // // // // // // // // Quando tiver o DB só alterar
-
-import * as SQLite from 'expo-sqlitee';
+import { PomodoroSession } from '@/types/pomodoro.type';
 
 const db = SQLite.openDatabaseSync('taskflow.db');
 
