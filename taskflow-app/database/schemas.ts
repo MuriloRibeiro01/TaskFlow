@@ -8,7 +8,8 @@ export function initDatabase() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT,
             display_name TEXT,
-            avatar_url TEXT
+            avatar_url TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
 
