@@ -35,3 +35,17 @@ describe('CompleteSession', () => {
          WHERE id = ?`, [1])
     })
 })
+
+describe('CancelSession', () => {
+    it('Deve selecionar uma sessão de pomodoro pelo ID e alterar o status para cancelado.', () => {
+        cancelSession(1);
+
+        expect(db.runSync).toHaveBeenCalledWith(
+            `UPDATE pomodoro_sessions 
+         SET status = 'cancelled', 
+             ended_at = datetime('now'),
+             duration_minutes = ROUND((julianday('now') - julianday(started_at)) * 1440)
+         WHERE id = ?`, [1]
+        )
+    })
+})
