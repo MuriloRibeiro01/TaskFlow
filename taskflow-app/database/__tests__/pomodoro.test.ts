@@ -49,3 +49,13 @@ describe('CancelSession', () => {
         )
     })
 })
+
+describe('GetSessionsByTask', () => {
+    it('Monta um array com todas as sessões de pomodoro criadas para uma tarefa específica, buscada pelo ID', () => {
+        
+        // Variável para capturar o return da função
+        const sessoes = getSessionsByTask(1);
+            
+        expect(sessoes).toEqual([]);
+    })
+})
