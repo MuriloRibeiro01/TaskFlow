@@ -1,4 +1,4 @@
-import { createSession, completeSession, cancelSession, getSessionsByTask, countPomodoros } from "../pomodoro";
+import { createSession, completeSession, cancelSession, getSessionsByTask, countPomodorosConcluidos } from "../pomodoro";
 
 import * as SQLite from 'expo-sqlite';
 
@@ -57,5 +57,13 @@ describe('GetSessionsByTask', () => {
         const sessoes = getSessionsByTask(1);
             
         expect(sessoes).toEqual([]);
+    })
+})
+
+describe('CountPomodorosConcluidos', () => {
+    it('Seleciona uma tarefa específica e conta o número de pomodoros concluídos.', () => {
+        const totalPomodoros = countPomodorosConcluidos(1);
+
+        expect(totalPomodoros).toBeDefined();
     })
 })

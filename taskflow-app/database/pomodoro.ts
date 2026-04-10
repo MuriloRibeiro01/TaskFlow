@@ -53,7 +53,7 @@ export function getSessionsByTask(task_id: number): PomodoroSession[] {
 }
 
 // Conta quantos pomodoros de foco foram concluídos em uma tarefa
-export function countPomodoros(task_id: number): number {
+export function countPomodorosConcluidos(task_id: number): number {
     const resultado = db.getFirstSync<{ total: number }>(
         `SELECT COUNT(*) as total FROM pomodoro_sessions 
          WHERE task_id = ? AND type = 'focus' AND status = 'completed'`,
