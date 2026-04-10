@@ -47,3 +47,11 @@ export function completeTask(id: number) {
         'UPDATE tasks SET status = ?, completed_at = datetime("now") WHERE id = ?', ['done', id]
     )
 }
+
+export function listTasks(status: string, priority: string): Task[] {
+    const listTasks = db.getAllSync<Task>(
+        'SELECT * FROM tasks WHERE date(created_at) = date("now") AND status = ? AND priority = ?', [status, priority]
+    )
+
+    return listTasks;
+}
