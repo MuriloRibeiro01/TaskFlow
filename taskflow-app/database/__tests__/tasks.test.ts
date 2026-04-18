@@ -1,6 +1,6 @@
 // TDD das tasks
 
-import { completeTask, createTask, deleteTask, editTask } from "../tasks";
+import { completeTask, createTask, deleteTask, editTask, listTasks } from "../tasks";
 
 import * as SQLite from 'expo-sqlite';
 
@@ -64,3 +64,13 @@ describe('CompleteTask', () => {
 
     });
 });
+
+describe('ListTasks', () => {
+    it('Lista todas as tarefas do dia com filtro de status e prioridade', () => {
+        listTasks('done', 'high');
+
+        expect(db.getAllSync).toHaveBeenCalledWith(
+            'SELECT * FROM tasks WHERE date(created_at) = date("now") AND status = ? AND priority = ?', ['done', 'high']
+        );
+    })
+})
