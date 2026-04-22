@@ -83,5 +83,5 @@ Ao concluir, abra um Pull Request da sua branch para a `Frontend`.
 |---|---|
 | Murilo Ribeiro da Silveira | Desenvolvimento Backend |
 | Pedro Henrique Borges Carvalho Braga | Desenvolvimento Backend |
-| Micael Martins | Desenvolvimento Frontent e desing de interfaces|
-| Vinícius de Oliveira | Desenvolvimento Frontent e desing de interfaces|
+| Micael Martins | Desenvolvimento Frontend e desing de interfaces|
+| Vinícius de Oliveira | Desenvolvimento Frontend e desing de interfaces|
