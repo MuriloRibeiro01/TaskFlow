@@ -1,5 +1,6 @@
 {
   "expo": {
+    "owner": "ehoribeiro",
     "name": "taskflow",
     "slug": "taskflow",
     "version": "1.0.0",
@@ -13,6 +14,7 @@
       "bundleIdentifier": "com.taskflow.app"
     },
     "android": {
+      "package": "com.taskflow.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
