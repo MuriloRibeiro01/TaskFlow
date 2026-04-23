@@ -34,19 +34,32 @@ function dbTaskToView(t: DBTask): Task {
   };
 }
 
+function isoDateStr(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
 function splitByDate(tasks: DBTask[]): { today: Task[]; tomorrow: Task[] } {
-  const todayStr = new Date().toISOString().split('T')[0];
-  const tomorrowDate = new Date(Date.now() + 86400000);
-  const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+  const todayStr = isoDateStr(new Date());
+  const tomorrowStr = isoDateStr(new Date(Date.now() + 86400000));
 
   const today: Task[] = [];
   const tomorrow: Task[] = [];
 
   for (const t of tasks) {
-    if (t.due_date && t.due_date.startsWith(tomorrowStr)) {
-      tomorrow.push(dbTaskToView(t));
+    if (t.due_date) {
+      // due_date stored as ISO "YYYY-MM-DD ..." — compare first 10 chars
+      const dueDay = t.due_date.substring(0, 10);
+      if (dueDay === tomorrowStr) {
+        tomorrow.push(dbTaskToView(t));
+      } else {
+        today.push(dbTaskToView(t));
+      }
     } else {
-      today.push(dbTaskToView(t));
+      // sem due_date: mostrar só se criada hoje
+      const createdDay = t.created_at ? t.created_at.substring(0, 10) : '';
+      if (createdDay === todayStr) {
+        today.push(dbTaskToView(t));
+      }
     }
   }
 
@@ -76,17 +89,16 @@ function PipsDots({ total, done, current }: { total: number; done: number; curre
 }
 
 function PriorityBadge({ priority }: { priority: Priority }) {
-  if (priority === 'Baixa') return null;
-
-  const isAlta = priority === 'Alta';
-  const symbol = isAlta ? '▲' : '—';
-  const color = isAlta ? Colors.vermelho : Colors.grafite;
-  const bg = isAlta ? 'rgba(214,59,47,0.08)' : 'rgba(14,14,15,0.06)';
-
+  const map: Record<Priority, { symbol: string; color: string; bg: string }> = {
+    Alta:  { symbol: '▲', color: Colors.vermelho, bg: 'rgba(214,59,47,0.08)' },
+    Média: { symbol: '—', color: Colors.grafite,  bg: 'rgba(14,14,15,0.06)' },
+    Baixa: { symbol: '▽', color: Colors.cinza,    bg: 'rgba(14,14,15,0.03)' },
+  };
+  const s = map[priority];
   return (
-    <View style={[styles.priorityBadge, { backgroundColor: bg }]}>
-      <Text style={[styles.priorityText, { color, fontFamily: Fonts.mono }]}>
-        {symbol} {priority}
+    <View style={[styles.priorityBadge, { backgroundColor: s.bg }]}>
+      <Text style={[styles.priorityText, { color: s.color, fontFamily: Fonts.mono }]}>
+        {s.symbol} {priority}
       </Text>
     </View>
   );
@@ -96,17 +108,20 @@ function TaskCard({ task }: { task: Task }) {
   const isDone = task.status === 'done';
   const isActive = task.status === 'in_progress';
 
-  const leftBorderColor = isActive
-    ? Colors.vermelho
-    : isDone
-    ? Colors.tinta
-    : 'transparent';
-
-  const cardBg = isDone ? Colors.papel2 : isActive ? Colors.papel3 : Colors.papel2;
+  const leftBorderColor = isActive ? Colors.vermelho : isDone ? Colors.tinta : 'transparent';
+  const cardBg = isActive ? Colors.papel3 : Colors.papel2;
 
   return (
     <View style={[styles.card, { opacity: isDone ? 0.5 : 1, backgroundColor: cardBg }]}>
       <View style={[styles.cardLeftBorder, { backgroundColor: leftBorderColor }]} />
+
+      {/* Checkbox */}
+      <View style={[styles.cardCheckbox, isDone && styles.cardCheckboxDone]}>
+        {isDone && (
+          <Text style={[styles.cardCheckboxMark, { fontFamily: Fonts.mono }]}>✓</Text>
+        )}
+      </View>
+
       <View style={styles.cardBody}>
         <View style={styles.cardHeader}>
           <Text style={[styles.taskId, { fontFamily: Fonts.mono }]}>{task.id}</Text>
@@ -126,10 +141,14 @@ function TaskCard({ task }: { task: Task }) {
         <View style={styles.cardFooter}>
           <StatusBadge status={task.status} />
           <PipsDots total={task.totalPips} done={task.donePips} current={isActive ? 1 : 0} />
-          <Text style={[styles.pipsLabel, { fontFamily: Fonts.mono }]}>
-            {task.donePips}/{task.totalPips} pom.
-          </Text>
-          <Text style={[styles.timeText, { fontFamily: Fonts.mono }]}>{task.minutes} min</Text>
+          {task.totalPips > 0 && (
+            <Text style={[styles.pipsLabel, { fontFamily: Fonts.mono }]}>
+              {task.donePips}/{task.totalPips} pom.
+            </Text>
+          )}
+          {task.minutes > 0 && (
+            <Text style={[styles.timeText, { fontFamily: Fonts.mono }]}>{task.minutes} min</Text>
+          )}
         </View>
       </View>
     </View>
@@ -190,7 +209,7 @@ export default function Index() {
 
       <View style={styles.summary}>
         <Text style={[styles.summaryText, { fontFamily: Fonts.mono }]}>
-          {completed} de {todayTasks.length} tarefas.{'  '}{focusLabel}.
+          {completed} DE {todayTasks.length} TAREFAS{'  '}·{'  '}{focusLabel.toUpperCase()}
         </Text>
       </View>
 
@@ -286,6 +305,27 @@ const styles = StyleSheet.create({
   },
   cardLeftBorder: {
     width: 2,
+  },
+  cardCheckbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 1,
+    borderColor: Colors.tinta,
+    alignSelf: 'flex-start',
+    marginTop: Spacing.sp4,
+    marginLeft: Spacing.sp3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  cardCheckboxDone: {
+    backgroundColor: Colors.tinta,
+    borderColor: Colors.tinta,
+  },
+  cardCheckboxMark: {
+    color: Colors.papel,
+    fontSize: 13,
+    lineHeight: 16,
   },
   cardBody: {
     flex: 1,
