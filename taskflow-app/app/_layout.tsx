@@ -1,4 +1,11 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import {
+  BarlowCondensed_600SemiBold,
+  BarlowCondensed_700Bold,
+  BarlowCondensed_900Black_Italic,
+} from '@expo-google-fonts/barlow-condensed';
+import { IBMPlexMono_400Regular } from '@expo-google-fonts/ibm-plex-mono';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
@@ -16,6 +23,12 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const [fontsLoaded] = useFonts({
+    BarlowCondensed_700Bold,
+    BarlowCondensed_600SemiBold,
+    BarlowCondensed_900Black_Italic,
+    IBMPlexMono_400Regular,
+  });
 
   // Inicia o db
   useEffect(() => {
@@ -40,6 +53,8 @@ export default function RootLayout() {
     inserirDado();
 
   }, []);
+
+  if (!fontsLoaded) return null;
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
