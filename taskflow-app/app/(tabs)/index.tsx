@@ -1,6 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Colors, FontSize, Fonts, Spacing } from '@/theme';
+import { getAllTasks } from '@/database/tasks';
+import { Task as DBTask } from '@/types/task.types';
 
 type Priority = 'Alta' | 'Média' | 'Baixa';
 type Status = 'in_progress' | 'pending' | 'done';
@@ -15,13 +19,39 @@ interface Task {
   donePips: number;
 }
 
-const TASKS_TODAY: Task[] = [
-  { id: 'T-001', title: 'Implementar CRUD de Tarefas', priority: 'Alta', status: 'in_progress', minutes: 50, totalPips: 3, donePips: 1 },
-  { id: 'T-002', title: 'Design das telas no Figma', priority: 'Média', status: 'pending', minutes: 37, totalPips: 3, donePips: 0 },
-  { id: 'T-003', title: 'Setup do projeto', priority: 'Baixa', status: 'done', minutes: 25, totalPips: 2, donePips: 2 },
-];
+function dbTaskToView(t: DBTask): Task {
+  const priorityMap: Record<string, Priority> = { high: 'Alta', medium: 'Média', low: 'Baixa' };
+  const estimated = t.estimated_pomodoros ?? 0;
+  const completed = t.completed_pomodoros ?? 0;
+  return {
+    id: `T-${String(t.id).padStart(3, '0')}`,
+    title: t.title,
+    priority: priorityMap[t.priority] ?? 'Baixa',
+    status: (t.status as Status) ?? 'pending',
+    minutes: estimated * 25,
+    totalPips: estimated,
+    donePips: completed,
+  };
+}
 
-const TASKS_TOMORROW: Task[] = [];
+function splitByDate(tasks: DBTask[]): { today: Task[]; tomorrow: Task[] } {
+  const todayStr = new Date().toISOString().split('T')[0];
+  const tomorrowDate = new Date(Date.now() + 86400000);
+  const tomorrowStr = tomorrowDate.toISOString().split('T')[0];
+
+  const today: Task[] = [];
+  const tomorrow: Task[] = [];
+
+  for (const t of tasks) {
+    if (t.due_date && t.due_date.startsWith(tomorrowStr)) {
+      tomorrow.push(dbTaskToView(t));
+    } else {
+      today.push(dbTaskToView(t));
+    }
+  }
+
+  return { today, tomorrow };
+}
 
 function PipsDots({ total, done, current }: { total: number; done: number; current: number }) {
   return (
@@ -121,14 +151,24 @@ function StatusBadge({ status }: { status: Status }) {
 }
 
 export default function Index() {
-  const [today] = useState(() =>
-    new Date()
-      .toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-      .toUpperCase()
+  const [todayTasks, setTodayTasks] = useState<Task[]>([]);
+  const [tomorrowTasks, setTomorrowTasks] = useState<Task[]>([]);
+
+  const todayLabel = new Date()
+    .toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+    .toUpperCase();
+
+  useFocusEffect(
+    useCallback(() => {
+      const all = getAllTasks();
+      const { today, tomorrow } = splitByDate(all);
+      setTodayTasks(today);
+      setTomorrowTasks(tomorrow);
+    }, [])
   );
 
-  const completed = TASKS_TODAY.filter(t => t.status === 'done').length;
-  const totalMins = TASKS_TODAY.reduce((acc, t) => acc + t.minutes, 0);
+  const completed = todayTasks.filter(t => t.status === 'done').length;
+  const totalMins = todayTasks.reduce((acc, t) => acc + t.minutes, 0);
   const h = Math.floor(totalMins / 60);
   const m = totalMins % 60;
   const focusLabel = h > 0 ? `${h}h ${m}min de foco` : `${m}min de foco`;
@@ -140,30 +180,36 @@ export default function Index() {
           <Text style={[styles.headerTitle, { fontFamily: Fonts.barlowBold }]}>
             TAREFAS DE HOJE
           </Text>
-          <Text style={[styles.headerDate, { fontFamily: Fonts.mono }]}>{today}</Text>
+          <Text style={[styles.headerDate, { fontFamily: Fonts.mono }]}>{todayLabel}</Text>
         </View>
         <View style={{ flex: 1 }} />
-        <Pressable style={styles.plusButton} onPress={() => console.log('Nova tarefa')}>
+        <Pressable style={styles.plusButton} onPress={() => router.push('/nova-tarefa')}>
           <Text style={[styles.plusText, { fontFamily: Fonts.barlowBold }]}>+</Text>
         </Pressable>
       </View>
 
       <View style={styles.summary}>
         <Text style={[styles.summaryText, { fontFamily: Fonts.mono }]}>
-          {completed} de {TASKS_TODAY.length} tarefas.{'  '}{focusLabel}.
+          {completed} de {todayTasks.length} tarefas.{'  '}{focusLabel}.
         </Text>
       </View>
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
         <Text style={[styles.sectionLabel, { fontFamily: Fonts.mono }]}>HOJE</Text>
-        {TASKS_TODAY.map(task => <TaskCard key={task.id} task={task} />)}
-
-        <Text style={[styles.sectionLabel, { fontFamily: Fonts.mono }]}>AMANHÃ</Text>
-        {TASKS_TOMORROW.length === 0 && (
+        {todayTasks.length === 0 && (
           <Text style={[styles.emptyText, { fontFamily: Fonts.mono }]}>
             Nenhuma tarefa. Adicione uma.
           </Text>
         )}
+        {todayTasks.map(task => <TaskCard key={task.id} task={task} />)}
+
+        <Text style={[styles.sectionLabel, { fontFamily: Fonts.mono }]}>AMANHÃ</Text>
+        {tomorrowTasks.length === 0 && (
+          <Text style={[styles.emptyText, { fontFamily: Fonts.mono }]}>
+            Nenhuma tarefa. Adicione uma.
+          </Text>
+        )}
+        {tomorrowTasks.map(task => <TaskCard key={task.id} task={task} />)}
       </ScrollView>
     </View>
   );
