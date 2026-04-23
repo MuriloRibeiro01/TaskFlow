@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Colors, FontSize, Fonts, Spacing } from '@/theme';
 
 type Priority = 'Alta' | 'Média' | 'Baixa';
-type Status = 'em foco' | 'pendente' | 'concluída';
+type Status = 'in_progress' | 'pending' | 'done';
 
 interface Task {
   id: string;
@@ -10,118 +11,158 @@ interface Task {
   priority: Priority;
   status: Status;
   minutes: number;
-  sessions: number;
+  totalPips: number;
+  donePips: number;
 }
 
 const TASKS_TODAY: Task[] = [
-  { id: 'T-001', title: 'Implementar CRUD de Tarefas', priority: 'Alta', status: 'em foco', minutes: 50, sessions: 3 },
-  { id: 'T-002', title: 'Design das telas no Figma', priority: 'Média', status: 'pendente', minutes: 37, sessions: 3 },
-  { id: 'T-003', title: 'Setup do projeto', priority: 'Baixa', status: 'concluída', minutes: 25, sessions: 2 },
+  { id: 'T-001', title: 'Implementar CRUD de Tarefas', priority: 'Alta', status: 'in_progress', minutes: 50, totalPips: 3, donePips: 1 },
+  { id: 'T-002', title: 'Design das telas no Figma', priority: 'Média', status: 'pending', minutes: 37, totalPips: 3, donePips: 0 },
+  { id: 'T-003', title: 'Setup do projeto', priority: 'Baixa', status: 'done', minutes: 25, totalPips: 2, donePips: 2 },
 ];
 
 const TASKS_TOMORROW: Task[] = [];
 
-const PRIORITY_COLORS: Record<Priority, string> = {
-  Alta: '#E53935',
-  Média: '#757575',
-  Baixa: '#757575',
-};
-
-const PRIORITY_ICONS: Record<Priority, string> = {
-  Alta: '▲',
-  Média: '—',
-  Baixa: '▼',
-};
-
-const STATUS_COLORS: Record<Status, string> = {
-  'em foco': '#E53935',
-  'pendente': '#757575',
-  'concluída': '#4CAF50',
-};
-
-function SessionDots({ total, filled }: { total: number; filled: number }) {
+function PipsDots({ total, done, current }: { total: number; done: number; current: number }) {
   return (
-    <View style={styles.dotsRow}>
-      {Array.from({ length: total }).map((_, i) => (
-        <View
-          key={i}
-          style={[styles.dot, i < filled ? styles.dotFilled : styles.dotEmpty]}
-        />
-      ))}
+    <View style={styles.pipsRow}>
+      {Array.from({ length: total }).map((_, i) => {
+        const isDone = i < done;
+        const isCurrent = !isDone && i === done && current > 0;
+        return (
+          <View
+            key={i}
+            style={[
+              styles.pip,
+              isDone && styles.pipDone,
+              isCurrent && styles.pipCurrent,
+              !isDone && !isCurrent && styles.pipPending,
+            ]}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+function PriorityBadge({ priority }: { priority: Priority }) {
+  if (priority === 'Baixa') return null;
+
+  const isAlta = priority === 'Alta';
+  const symbol = isAlta ? '▲' : '—';
+  const color = isAlta ? Colors.vermelho : Colors.grafite;
+  const bg = isAlta ? 'rgba(214,59,47,0.08)' : 'rgba(14,14,15,0.06)';
+
+  return (
+    <View style={[styles.priorityBadge, { backgroundColor: bg }]}>
+      <Text style={[styles.priorityText, { color, fontFamily: Fonts.mono }]}>
+        {symbol} {priority}
+      </Text>
     </View>
   );
 }
 
 function TaskCard({ task }: { task: Task }) {
-  const isDone = task.status === 'concluída';
+  const isDone = task.status === 'done';
+  const isActive = task.status === 'in_progress';
+
+  const leftBorderColor = isActive
+    ? Colors.vermelho
+    : isDone
+    ? Colors.tinta
+    : 'transparent';
+
+  const cardBg = isDone ? Colors.papel2 : isActive ? Colors.papel3 : Colors.papel2;
+
   return (
-    <View style={[styles.card, isDone && styles.cardDone]}>
-      <View style={styles.cardRow}>
-        <View style={[styles.priorityBar, { backgroundColor: PRIORITY_COLORS[task.priority] }]} />
-        <View style={styles.cardContent}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.taskId}>{task.id}</Text>
-            <View style={styles.priorityBadge}>
-              <Text style={[styles.priorityText, { color: PRIORITY_COLORS[task.priority] }]}>
-                {PRIORITY_ICONS[task.priority]} {task.priority}
-              </Text>
-            </View>
-          </View>
-          <Text style={[styles.taskTitle, isDone && styles.taskTitleDone]}>{task.title}</Text>
-          <View style={styles.cardFooter}>
-            <View style={[styles.statusBadge, { borderColor: STATUS_COLORS[task.status] }]}>
-              <Text style={[styles.statusText, { color: STATUS_COLORS[task.status] }]}>
-                {isDone ? '✓' : '—'} {task.status}
-              </Text>
-            </View>
-            <SessionDots total={task.sessions} filled={isDone ? task.sessions : 1} />
-            <Text style={styles.timeText}>{task.minutes} min</Text>
-          </View>
+    <View style={[styles.card, { opacity: isDone ? 0.5 : 1, backgroundColor: cardBg }]}>
+      <View style={[styles.cardLeftBorder, { backgroundColor: leftBorderColor }]} />
+      <View style={styles.cardBody}>
+        <View style={styles.cardHeader}>
+          <Text style={[styles.taskId, { fontFamily: Fonts.mono }]}>{task.id}</Text>
+          <PriorityBadge priority={task.priority} />
+        </View>
+
+        <Text
+          style={[
+            styles.taskTitle,
+            { fontFamily: Fonts.barlowSemiBold },
+            isDone && styles.taskTitleDone,
+          ]}
+        >
+          {task.title}
+        </Text>
+
+        <View style={styles.cardFooter}>
+          <StatusBadge status={task.status} />
+          <PipsDots total={task.totalPips} done={task.donePips} current={isActive ? 1 : 0} />
+          <Text style={[styles.pipsLabel, { fontFamily: Fonts.mono }]}>
+            {task.donePips}/{task.totalPips} pom.
+          </Text>
+          <Text style={[styles.timeText, { fontFamily: Fonts.mono }]}>{task.minutes} min</Text>
         </View>
       </View>
+    </View>
+  );
+}
+
+function StatusBadge({ status }: { status: Status }) {
+  const map: Record<Status, { label: string; color: string; bg: string }> = {
+    in_progress: { label: '● em foco', color: Colors.papel, bg: Colors.tinta },
+    pending: { label: '— pendente', color: Colors.grafite, bg: 'rgba(14,14,15,0.06)' },
+    done: { label: '✓ concluída', color: Colors.tinta, bg: 'rgba(14,14,15,0.06)' },
+  };
+  const s = map[status];
+  return (
+    <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
+      <Text style={[styles.statusText, { color: s.color, fontFamily: Fonts.mono }]}>{s.label}</Text>
     </View>
   );
 }
 
 export default function Index() {
   const [today] = useState(() =>
-    new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+    new Date()
+      .toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
       .toUpperCase()
   );
 
-  const completed = TASKS_TODAY.filter(t => t.status === 'concluída').length;
-  const totalFocus = TASKS_TODAY.reduce((acc, t) => acc + t.minutes, 0);
-  const focusHours = Math.floor(totalFocus / 60);
-  const focusMins = totalFocus % 60;
+  const completed = TASKS_TODAY.filter(t => t.status === 'done').length;
+  const totalMins = TASKS_TODAY.reduce((acc, t) => acc + t.minutes, 0);
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  const focusLabel = h > 0 ? `${h}h ${m}min de foco` : `${m}min de foco`;
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>TAREFAS DE HOJE</Text>
-          <Text style={styles.headerDate}>{today}</Text>
+          <Text style={[styles.headerTitle, { fontFamily: Fonts.barlowBold }]}>
+            TAREFAS DE HOJE
+          </Text>
+          <Text style={[styles.headerDate, { fontFamily: Fonts.mono }]}>{today}</Text>
         </View>
         <View style={{ flex: 1 }} />
         <Pressable style={styles.plusButton} onPress={() => console.log('Nova tarefa')}>
-          <Text style={styles.plusText}>+</Text>
+          <Text style={[styles.plusText, { fontFamily: Fonts.barlowBold }]}>+</Text>
         </Pressable>
       </View>
 
       <View style={styles.summary}>
-        <Text style={styles.summaryText}>
-          {completed} DE {TASKS_TODAY.length} TAREFAS
-          {'  ·  '}
-          {focusHours}H {focusMins}MIN DE FOCO
+        <Text style={[styles.summaryText, { fontFamily: Fonts.mono }]}>
+          {completed} de {TASKS_TODAY.length} tarefas.{'  '}{focusLabel}.
         </Text>
       </View>
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-        <Text style={styles.sectionLabel}>HOJE</Text>
+        <Text style={[styles.sectionLabel, { fontFamily: Fonts.mono }]}>HOJE</Text>
         {TASKS_TODAY.map(task => <TaskCard key={task.id} task={task} />)}
 
-        <Text style={styles.sectionLabel}>AMANHÃ</Text>
+        <Text style={[styles.sectionLabel, { fontFamily: Fonts.mono }]}>AMANHÃ</Text>
         {TASKS_TOMORROW.length === 0 && (
-          <Text style={styles.emptyText}>Nenhuma tarefa para amanhã.</Text>
+          <Text style={[styles.emptyText, { fontFamily: Fonts.mono }]}>
+            Nenhuma tarefa. Adicione uma.
+          </Text>
         )}
       </ScrollView>
     </View>
@@ -131,152 +172,153 @@ export default function Index() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: Colors.papel,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 56,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    backgroundColor: '#000',
+    paddingTop: Spacing.sp12,
+    paddingBottom: Spacing.sp5,
+    paddingHorizontal: Spacing.sp5,
+    backgroundColor: Colors.tinta,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    letterSpacing: 1,
+    fontSize: FontSize.headingXl,
+    color: Colors.papel,
+    letterSpacing: 0.5,
   },
   headerDate: {
-    fontSize: 13,
-    color: '#aaa',
-    marginTop: 4,
+    fontSize: FontSize.label,
+    color: Colors.cinza,
+    marginTop: Spacing.sp1,
     letterSpacing: 0.5,
   },
   plusButton: {
-    width: 44,
-    height: 44,
-    borderWidth: 1.5,
-    borderColor: '#fff',
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderWidth: 1,
+    borderColor: Colors.papel,
+    borderRadius: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
   plusText: {
-    fontSize: 26,
-    color: '#fff',
-    lineHeight: 30,
+    fontSize: 24,
+    color: Colors.papel,
+    lineHeight: 28,
   },
   summary: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: '#F5F5F5',
+    paddingHorizontal: Spacing.sp5,
+    paddingVertical: Spacing.sp3,
+    backgroundColor: Colors.papel,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.papel3,
   },
   summaryText: {
-    fontSize: 12,
-    color: '#757575',
-    letterSpacing: 0.5,
+    fontSize: FontSize.label,
+    color: Colors.grafite,
+    letterSpacing: 0.3,
   },
   list: {
     flex: 1,
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingHorizontal: Spacing.sp4,
+    paddingBottom: Spacing.sp6,
   },
   sectionLabel: {
-    fontSize: 11,
-    color: '#9E9E9E',
+    fontSize: FontSize.label,
+    color: Colors.cinza,
     letterSpacing: 1,
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: Spacing.sp8,
+    marginBottom: Spacing.sp2,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    marginBottom: 10,
-    overflow: 'hidden',
-  },
-  cardDone: {
-    opacity: 0.7,
-  },
-  cardRow: {
     flexDirection: 'row',
+    borderRadius: 0,
+    marginBottom: Spacing.sp5,
   },
-  priorityBar: {
-    width: 4,
+  cardLeftBorder: {
+    width: 2,
   },
-  cardContent: {
+  cardBody: {
     flex: 1,
-    padding: 14,
+    padding: Spacing.sp4,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    alignItems: 'center',
+    marginBottom: Spacing.sp2,
   },
   taskId: {
-    fontSize: 11,
-    color: '#9E9E9E',
-    letterSpacing: 0.5,
+    fontSize: FontSize.taskId,
+    color: Colors.cinza,
+    letterSpacing: 0.3,
   },
-  priorityBadge: {},
+  priorityBadge: {
+    paddingHorizontal: Spacing.sp2,
+    paddingVertical: 2,
+  },
   priorityText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: FontSize.label,
     letterSpacing: 0.3,
   },
   taskTitle: {
-    fontSize: 16,
-    color: '#111',
-    fontWeight: '500',
-    marginBottom: 10,
+    fontSize: FontSize.taskTitle,
+    color: Colors.tinta,
+    marginBottom: Spacing.sp3,
   },
   taskTitleDone: {
     textDecorationLine: 'line-through',
-    color: '#9E9E9E',
+    color: Colors.grafite,
   },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: Spacing.sp2,
+    flexWrap: 'wrap',
   },
   statusBadge: {
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 8,
+    paddingHorizontal: Spacing.sp2,
     paddingVertical: 2,
   },
   statusText: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: FontSize.label,
+    letterSpacing: 0.3,
   },
-  dotsRow: {
+  pipsRow: {
     flexDirection: 'row',
-    gap: 4,
-    flex: 1,
+    gap: Spacing.sp1,
+    alignItems: 'center',
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 2,
+  pip: {
+    width: 6,
+    height: 6,
   },
-  dotFilled: {
-    backgroundColor: '#E53935',
+  pipDone: {
+    backgroundColor: Colors.vermelho,
   },
-  dotEmpty: {
+  pipCurrent: {
+    backgroundColor: Colors.tinta,
+  },
+  pipPending: {
     borderWidth: 1,
-    borderColor: '#BDBDBD',
+    borderColor: '#D6D3CB',
     backgroundColor: 'transparent',
   },
+  pipsLabel: {
+    fontSize: FontSize.label,
+    color: Colors.cinza,
+  },
   timeText: {
-    fontSize: 12,
-    color: '#9E9E9E',
+    fontSize: FontSize.label,
+    color: Colors.cinza,
+    marginLeft: 'auto',
   },
   emptyText: {
-    fontSize: 13,
-    color: '#BDBDBD',
-    fontStyle: 'italic',
-    marginTop: 4,
+    fontSize: FontSize.caption,
+    color: Colors.cinza,
+    marginTop: Spacing.sp2,
   },
 });
