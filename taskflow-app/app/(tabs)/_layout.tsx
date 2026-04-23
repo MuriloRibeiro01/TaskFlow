@@ -1,35 +1,73 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, Fonts } from '@/theme';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+function TabIcon({ name, focused }: { name: React.ComponentProps<typeof Ionicons>['name']; focused: boolean }) {
+  return (
+    <View style={styles.iconWrapper}>
+      <Ionicons name={name} size={22} color={Colors.papel} strokeWidth={1.2} />
+      {focused && <View style={styles.activeDot} />}
+    </View>
+  );
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarStyle: styles.tabBar,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarActiveTintColor: Colors.papel,
+        tabBarInactiveTintColor: Colors.cinza,
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Tarefas',
+          tabBarIcon: ({ focused }) => <TabIcon name="list-outline" focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="timer"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Timer',
+          tabBarIcon: ({ focused }) => <TabIcon name="timer-outline" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="perfil"
+        options={{
+          title: 'Perfil',
+          tabBarIcon: ({ focused }) => <TabIcon name="person-outline" focused={focused} />,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    backgroundColor: Colors.tinta,
+    borderTopWidth: 0,
+    height: 80,
+    paddingBottom: 20,
+    paddingTop: 8,
+  },
+  tabLabel: {
+    fontFamily: Fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.5,
+  },
+  iconWrapper: {
+    alignItems: 'center',
+    gap: 3,
+  },
+  activeDot: {
+    width: 3,
+    height: 3,
+    backgroundColor: Colors.vermelho,
+  },
+});

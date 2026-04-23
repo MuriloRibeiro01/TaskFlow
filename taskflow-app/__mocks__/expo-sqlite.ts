@@ -1,4 +1,5 @@
 // Simula db com mock com valor "hardcoded"
+// Se uma função de db. NÃO EXISTIR NESSE ARQUIVO, ela NÃO VAI RODAR.
 
 const mockDb = {
     execSync: jest.fn(),
@@ -10,6 +11,7 @@ const mockDb = {
         priority: 'high',
         status: 'pending'
     }),
+    getAllSync: jest.fn().mockReturnValue([])
 };
 
 // Iguala valor da função com o mockDb que sempre retorna o mesmo valor
