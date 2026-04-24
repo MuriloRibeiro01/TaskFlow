@@ -1,6 +1,8 @@
+// Apenas abre o login com Google
+
 import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import supabase from '../supabase/supabase';
+import { supabase } from '../supabase/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -24,10 +26,7 @@ export async function userAuthentication() {
 
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
 
-    if (result.type === 'success') {
-        const { data: sessionData } = await supabase.auth.getSession();
-        console.log('Usuário logado:', sessionData.session?.user?.email);
-        return sessionData.session;
-    }
+    if (result.type !== 'success') return null;
 
+    return true;
 }
