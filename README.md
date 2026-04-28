@@ -12,21 +12,6 @@ Esta branch concentra toda a lógica de persistência local do TaskFlow: schemas
 
 ## Configuração do ambiente
 
-### Pré-requisitos
-
-Este projeto usa o Node.js na versão definida no arquivo `.nvmrc`. Antes de instalar qualquer dependência, certifique-se de estar usando a versão correta:
-
-```bash
-# Instale o nvm caso ainda não tenha
-# https://github.com/nvm-sh/nvm
-
-# Use a versão definida no .nvmrc (v25.7.0)
-nvm use
-
-# Confirme a versão ativa
-node -v  # deve exibir v25.7.0
-```
-
 ### Instalação
 
 ```bash
