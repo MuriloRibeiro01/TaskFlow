@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import supabase from '@/database/supabase/supabase';
+import { supabase } from '@/database/supabase/supabase';
 
 import { initDatabase } from '@/database/schemas';
 
