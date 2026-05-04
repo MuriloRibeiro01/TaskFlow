@@ -59,7 +59,7 @@ describe('CompleteTask', () => {
         completeTask(1);
 
         expect(db.runSync).toHaveBeenCalledWith(
-            'UPDATE tasks SET status = ?, completed_at = datetime("now") WHERE id = ?', ['done', 1]
+            'UPDATE tasks SET status = ?, completed_at = datetime("now"), completed_pomodoros = ?  WHERE id = ?', ['done', 4, 1]
         );
 
     });
