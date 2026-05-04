@@ -43,8 +43,15 @@ export function editTask(id: number, input: { title: string; description: string
 }
 
 export function completeTask(id: number) {
+
+    const result = db.getFirstSync<{count: number} >(
+        'SELECT COUNT(*) as count FROM pomodoro_sessions WHERE task_id = ?', [id]
+    );
+
+    const countPomodoro = result?.count ?? 0;
+
     db.runSync(
-        'UPDATE tasks SET status = ?, completed_at = datetime("now") WHERE id = ?', ['done', id]
+        'UPDATE tasks SET status = ?, completed_at = datetime("now"), completed_pomodoros = ?  WHERE id = ?', ['done', countPomodoro, id]
     )
 }
 
