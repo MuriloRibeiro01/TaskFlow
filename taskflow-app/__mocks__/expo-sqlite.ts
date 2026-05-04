@@ -9,7 +9,8 @@ const mockDb = {
         title: 'Estudar',
         description: 'Estudar Java',
         priority: 'high',
-        status: 'pending'
+        status: 'pending',
+        count: 5
     }),
     getAllSync: jest.fn().mockReturnValue([])
 };
