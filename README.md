@@ -14,11 +14,6 @@ Esta branch especifica o desenvolvimento de interfaces para o projeto TaskFlow.
 
 ### Pré-requisitos
 
-
-# Confirme a versão ativa
-node -v  # deve exibir v25.7.0
-```
-
 ### Instalação
 
 ```bash
