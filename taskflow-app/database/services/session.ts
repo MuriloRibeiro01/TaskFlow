@@ -1,6 +1,4 @@
 // Controla o comportamento da sessão
-
-import 'react-native-url-polyfill/auto';
 import { supabase } from '../supabase/supabase';
 
 export async function getCurrentSession() {
