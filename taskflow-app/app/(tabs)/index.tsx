@@ -3,14 +3,16 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Colors, FontSize, Fonts, Spacing } from '@/theme';
-import { getAllTasks } from '@/database/tasks';
+import { completeTask, deleteTask, getAllTasks, reopenTask } from '@/database/tasks';
 import { Task as DBTask } from '@/types/task.types';
+import { Trash2 } from 'lucide-react-native';
 
 type Priority = 'Alta' | 'Média' | 'Baixa';
 type Status = 'in_progress' | 'pending' | 'done';
 
-interface Task {
-  id: string;
+export interface Task {
+  id: number;
+  displayId: string;
   title: string;
   priority: Priority;
   status: Status;
@@ -19,12 +21,13 @@ interface Task {
   donePips: number;
 }
 
-function dbTaskToView(t: DBTask): Task {
+export function dbTaskToView(t: DBTask): Task {
   const priorityMap: Record<string, Priority> = { high: 'Alta', medium: 'Média', low: 'Baixa' };
   const estimated = t.estimated_pomodoros ?? 0;
   const completed = t.completed_pomodoros ?? 0;
   return {
-    id: `T-${String(t.id).padStart(3, '0')}`,
+    id: t.id,
+    displayId: `T-${String(t.id).padStart(3, '0')}`,
     title: t.title,
     priority: priorityMap[t.priority] ?? 'Baixa',
     status: (t.status as Status) ?? 'pending',
@@ -104,54 +107,90 @@ function PriorityBadge({ priority }: { priority: Priority }) {
   );
 }
 
-function TaskCard({ task }: { task: Task }) {
+export function TaskCard({ 
+    task,
+    selected = false,
+    onPress,
+    onCheck,
+    onDelete,
+   }: {
+    task: Task;
+    selected?: boolean;
+    onPress?: () => void;
+    onCheck?: () =>  void;
+    onDelete?: () => void;
+   }) {
   const isDone = task.status === 'done';
   const isActive = task.status === 'in_progress';
+
+  
 
   const leftBorderColor = isActive ? Colors.vermelho : isDone ? Colors.tinta : 'transparent';
   const cardBg = isActive ? Colors.papel3 : Colors.papel2;
 
   return (
-    <View style={[styles.card, { opacity: isDone ? 0.5 : 1, backgroundColor: cardBg }]}>
-      <View style={[styles.cardLeftBorder, { backgroundColor: leftBorderColor }]} />
+    <Pressable onPress={onPress}>
+      <View style={[
+        styles.card,
+        selected && {
+          borderWidth: 2,
+          borderColor: Colors.vermelho
+        },
+        { opacity: isDone ? 0.5 : 1, backgroundColor: cardBg }]}>
+        <View style={[styles.cardLeftBorder, { backgroundColor: leftBorderColor }]} />
 
-      {/* Checkbox */}
-      <View style={[styles.cardCheckbox, isDone && styles.cardCheckboxDone]}>
-        {isDone && (
-          <Text style={[styles.cardCheckboxMark, { fontFamily: Fonts.mono }]}>✓</Text>
-        )}
-      </View>
-
-      <View style={styles.cardBody}>
-        <View style={styles.cardHeader}>
-          <Text style={[styles.taskId, { fontFamily: Fonts.mono }]}>{task.id}</Text>
-          <PriorityBadge priority={task.priority} />
-        </View>
-
-        <Text
+        {/* Checkbox */}
+        <Pressable
+          onPress={onCheck}
           style={[
-            styles.taskTitle,
-            { fontFamily: Fonts.barlowSemiBold },
-            isDone && styles.taskTitleDone,
-          ]}
-        >
-          {task.title}
-        </Text>
+              styles.cardCheckbox, 
+              isDone && styles.cardCheckboxDone,
+              ]}>
+            {isDone && (
+              <Text style={[styles.cardCheckboxMark, { fontFamily: Fonts.mono }]}>✓</Text>
+            )}
+        </Pressable>
 
-        <View style={styles.cardFooter}>
-          <StatusBadge status={task.status} />
-          <PipsDots total={task.totalPips} done={task.donePips} current={isActive ? 1 : 0} />
-          {task.totalPips > 0 && (
-            <Text style={[styles.pipsLabel, { fontFamily: Fonts.mono }]}>
-              {task.donePips}/{task.totalPips} pom.
+        <View style={styles.cardBody}>
+          <View style={styles.cardHeader}>
+            <Text style={[styles.taskId, { fontFamily: Fonts.mono }]}>
+              {task.displayId}
             </Text>
-          )}
-          {task.minutes > 0 && (
-            <Text style={[styles.timeText, { fontFamily: Fonts.mono }]}>{task.minutes} min</Text>
-          )}
+
+            <View style={styles.headerActions}>
+              <PriorityBadge priority={task.priority} />
+
+              <Pressable onPress={onDelete}>
+                <Trash2 size={18} color={Colors.cinza} />
+              </Pressable>
+            </View>
+          </View>
+
+          <Text
+            style={[
+              styles.taskTitle,
+              { fontFamily: Fonts.barlowSemiBold },
+              isDone && styles.taskTitleDone,
+            ]}
+          >
+            {task.title}
+          </Text>
+
+          <View style={styles.cardFooter}>
+            <StatusBadge status={task.status} />
+            <PipsDots total={task.totalPips} done={task.donePips} current={isActive ? 1 : 0} />
+            {task.totalPips > 0 && (
+              <Text style={[styles.pipsLabel, { fontFamily: Fonts.mono }]}>
+                {task.donePips}/{task.totalPips} pom.
+              </Text>
+            )}
+            {task.minutes > 0 && (
+              <Text style={[styles.timeText, { fontFamily: Fonts.mono }]}>{task.minutes} min</Text>
+            )}
+          </View>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -170,8 +209,11 @@ function StatusBadge({ status }: { status: Status }) {
 }
 
 export default function Index() {
+
   const [todayTasks, setTodayTasks] = useState<Task[]>([]);
   const [tomorrowTasks, setTomorrowTasks] = useState<Task[]>([]);
+
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const todayLabel = new Date()
     .toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
@@ -220,7 +262,44 @@ export default function Index() {
             Nenhuma tarefa. Adicione uma.
           </Text>
         )}
-        {todayTasks.map(task => <TaskCard key={task.id} task={task} />)}
+        {todayTasks.map(task => 
+          <TaskCard
+            task={task} 
+            selected={selectedTask?.id === task.id} 
+            onDelete={() => {
+              deleteTask(task.id);
+
+              const all = getAllTasks();
+              const { today, tomorrow } = splitByDate(all);
+
+              setTodayTasks(today);
+              setTomorrowTasks(tomorrow);
+            }}
+            onCheck={() => {
+              if (task.status === 'done') {
+                reopenTask(task.id);
+
+                setTodayTasks(prev =>
+                  prev.map(t =>
+                    t.id === task.id
+                      ? { ...t, status: 'pending' }
+                      : t
+                  )
+                );
+              } else {
+                completeTask(task.id);
+
+                setTodayTasks(prev =>
+                  prev.map(t =>
+                    t.id === task.id
+                      ? { ...t, status: 'done' }
+                      : t
+                  )
+                );
+              }
+            }}
+          />
+        )}
 
         <Text style={[styles.sectionLabel, { fontFamily: Fonts.mono }]}>AMANHÃ</Text>
         {tomorrowTasks.length === 0 && (
@@ -228,7 +307,7 @@ export default function Index() {
             Nenhuma tarefa. Adicione uma.
           </Text>
         )}
-        {tomorrowTasks.map(task => <TaskCard key={task.id} task={task} />)}
+        {tomorrowTasks.map(task => <TaskCard task={task} onCheck={() => completeTask(task.id)} />)}
       </ScrollView>
     </View>
   );
@@ -406,5 +485,18 @@ const styles = StyleSheet.create({
     fontSize: FontSize.caption,
     color: Colors.cinza,
     marginTop: Spacing.sp2,
+  },
+    headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  deleteButton: {
+    padding: 4,
+  },
+
+  deleteIcon: {
+    fontSize: 16,
   },
 });
