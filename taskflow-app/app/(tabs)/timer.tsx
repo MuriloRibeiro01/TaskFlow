@@ -1,6 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
 import { Colors, FontSize, Fonts, Spacing } from '@/theme';
+import { TaskCard, dbTaskToView } from '.';
+import { getAllTasks, getTaskById } from '@/database/tasks';
+import { useFocusEffect } from 'expo-router';
+import { Task } from '.';
 
 const INTERVAL_MINUTES = 5;
 const STEP_SECONDS = 30;
@@ -12,8 +16,8 @@ function formatTime(seconds: number): string {
 }
 
 export default function Timer() {
-  const [durationSeconds, setDurationSeconds] = useState(30 * 60);
-  const [remainingSeconds, setRemainingSeconds] = useState(30 * 60);
+  const [durationSeconds, setDurationSeconds] = useState(25 * 60);
+  const [remainingSeconds, setRemainingSeconds] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -75,6 +79,20 @@ export default function Timer() {
     setRemainingSeconds(durationSeconds);
   }
 
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      const tudo = getAllTasks();
+
+      const convertido = tudo.map(dbTaskToView);
+
+      setTasks(convertido);
+    }, [])
+  );
+  
+
   const isFinished = remainingSeconds === 0;
   const buttonLabel = isFinished
     ? 'Reiniciar timer'
@@ -130,29 +148,14 @@ export default function Timer() {
         {/* Task Selection */}
         <Text style={styles.sectionTitle}>Selecionar tarefas</Text>
 
-        <View style={styles.taskCard}>
-          <View style={styles.taskCheckbox} />
-          <View style={styles.taskInfo}>
-            <View style={styles.taskTopRow}>
-              <Text style={styles.taskId}>T-002</Text>
-              <View style={styles.priorityBadge}>
-                <Text style={styles.priorityText}>− Média</Text>
-              </View>
-            </View>
-            <Text style={styles.taskTitle}>Design das telas no Figma</Text>
-            <View style={styles.taskBottomRow}>
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>− pendente</Text>
-              </View>
-              <View style={styles.squareRow}>
-                <View style={styles.square} />
-                <View style={styles.square} />
-                <View style={styles.square} />
-              </View>
-              <Text style={styles.taskTime}>37 min</Text>
-            </View>
-          </View>
-        </View>
+        {tasks.map(task => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            selected={selectedTask?.id === task.id}
+            onPress={() => setSelectedTask(task)}
+          />
+        ))}
 
         {/* Action Buttons */}
         <TouchableOpacity
