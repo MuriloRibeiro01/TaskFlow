@@ -41,7 +41,7 @@ export default function TabLayout() {
         name="perfil"
         options={{
           title: 'Perfil',
-          tabBarIcon: ({ focused }) => <TabIcon name="person-outline" focused={focused} />,
+          href: null, // Esconde da tab bar sem precisar deletar o arquivo
         }}
       />
     </Tabs>
