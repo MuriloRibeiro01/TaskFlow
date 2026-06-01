@@ -59,3 +59,15 @@ export function listTasks(status: string, priority: string): Task[] {
         'SELECT * FROM tasks WHERE date(created_at) = date("now") AND status = ? AND priority = ?', [status, priority]
     );
 }
+
+export function getTaskById(id: number) {
+    return db.getFirstSync<Task>(
+        'SELECT * FROM tasks WHERE id = ?', [id]
+    );
+}
+
+export function reopenTask(id: number) {
+    db.runSync(
+        'UPDATE tasks SET status = ? WHERE id = ?', ['pending', id]
+    )
+}
