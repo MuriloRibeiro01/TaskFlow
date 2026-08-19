@@ -14,6 +14,8 @@ import { supabase } from '@/database/supabase/supabase';
 
 import { initDatabase } from '@/database/schemas';
 
+initDatabase();
+
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useEffect } from 'react';
 
@@ -29,10 +31,9 @@ export default function RootLayout() {
     BarlowCondensed_900Black_Italic,
     IBMPlexMono_400Regular,
   });
-
+/*
   // Inicia o db
   useEffect(() => {
-    initDatabase();
 
     const inserirDado = async () => {
       const { data, error } = await supabase
@@ -53,7 +54,7 @@ export default function RootLayout() {
     inserirDado();
 
   }, []);
-
+*/
   if (!fontsLoaded) return null;
 
   return (
