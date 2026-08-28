@@ -1,6 +1,6 @@
 // TDD das tasks
 
-import { completeTask, createTask, deleteTask, editTask, listTasks } from "../tasks";
+import { completeTask, createTask, deleteTask, editTask, getTaskById, listTasks, reopenTask } from "../tasks";
 
 import * as SQLite from 'expo-sqlite';
 
@@ -71,6 +71,28 @@ describe('ListTasks', () => {
 
         expect(db.getAllSync).toHaveBeenCalledWith(
             'SELECT * FROM tasks WHERE date(created_at) = date("now") AND status = ? AND priority = ?', ['done', 'high']
+        );
+    })
+})
+
+describe('GetTaskById', () => {
+    it('Pega uma tarefa apenas com base no ID', () => {
+
+        getTaskById(1);
+
+        expect(db.getFirstSync).toHaveBeenCalledWith(
+            'SELECT * FROM tasks WHERE id = ?', [1]
+        )     
+
+    })
+});
+
+describe('ReOpenTask', () => {
+    it('Desmarca uma tarefa como concluída para pendente.', () => {
+        reopenTask(1);
+        
+        expect(db.runSync).toHaveBeenCalledWith(
+            'UPDATE tasks SET status = ? WHERE id = ?', ['pending', 1]
         );
     })
 })

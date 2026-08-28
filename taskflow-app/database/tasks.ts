@@ -6,22 +6,22 @@ import { Task } from '@/types/task.types';
 
 const db = SQLite.openDatabaseSync('taskflow.db');
 
-//Cria um objeto com os valores de input e executa um select SQL
-// : Task define o type do retorno
-export function createTask(input: { title: string; description: string; priority: string }): Task {
+export function createTask(input: {
+    title: string;
+    description: string;
+    priority: string;
+    estimated_pomodoros?: number;
+    due_date?: string;
+}): Task {
     const resultado = db.runSync(
-        'INSERT INTO tasks (title, description, priority) VALUES (?, ?, ?)',
-        [input.title, input.description, input.priority]
+        'INSERT INTO tasks (title, description, priority, estimated_pomodoros, due_date) VALUES (?, ?, ?, ?, ?)',
+        [input.title, input.description, input.priority, input.estimated_pomodoros ?? null, input.due_date ?? null]
     );
 
-    const ultimoId = resultado.lastInsertRowId;
-
-    // O resultado da consulta é um type 'Task'
     const tarefa = db.getFirstSync<Task>(
-        'SELECT * FROM tasks WHERE id = ?', [ultimoId]
+        'SELECT * FROM tasks WHERE id = ?', [resultado.lastInsertRowId]
     );
 
-    // etorna o valor NOT NULL
     return tarefa!;
 };
 
@@ -55,10 +55,26 @@ export function completeTask(id: number) {
     )
 }
 
-export function listTasks(status: string, priority: string): Task[] {
-    const listTasks = db.getAllSync<Task>(
-        'SELECT * FROM tasks WHERE date(created_at) = date("now") AND status = ? AND priority = ?', [status, priority]
-    )
+export function getAllTasks(): Task[] {
+    return db.getAllSync<Task>(
+        'SELECT * FROM tasks ORDER BY created_at DESC'
+    );
+}
 
-    return listTasks;
+export function listTasks(status: string, priority: string): Task[] {
+    return db.getAllSync<Task>(
+        'SELECT * FROM tasks WHERE date(created_at) = date("now") AND status = ? AND priority = ?', [status, priority]
+    );
+}
+
+export function getTaskById(id: number) {
+    return db.getFirstSync<Task>(
+        'SELECT * FROM tasks WHERE id = ?', [id]
+    );
+}
+
+export function reopenTask(id: number) {
+    db.runSync(
+        'UPDATE tasks SET status = ? WHERE id = ?', ['pending', id]
+    )
 }
