@@ -8,10 +8,15 @@ import {
 import { IBMPlexMono_400Regular } from '@expo-google-fonts/ibm-plex-mono';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import 'react-native-url-polyfill/auto';
 import 'react-native-reanimated';
 import { View, ActivityIndicator } from 'react-native';
 import { AuthProvider, useAuth } from '@/database/context/auth_context';
+
+import '@/database/supabase/polyfills';
+
+import { initDatabase } from '@/database/schemas';
+
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { initDatabase } from '@/database/schemas';
 import { useEffect } from 'react';

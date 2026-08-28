@@ -6,6 +6,9 @@ import * as SecureStore from 'expo-secure-store';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
+console.log('URL', process.env.EXPO_PUBLIC_SUPABASE_URL);
+console.log('KEY', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
+
 // Força o supabase a usar o SecureStore
 const secureStoreAdapter = {
     // Lê do armazenamento seguro
@@ -23,9 +26,10 @@ const secureStoreAdapter = {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
-        storage: secureStoreAdapter, // Onde guardar
-        autoRefreshToken: true, // Mantém o usuário logado
-        persistSession: true, // Sessão continua mesmo se fechar o app
-        detectSessionInUrl: false // Desligar função que só funciona no web
+        storage: secureStoreAdapter,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+        flowType: 'pkce', // Necessário para exchangeCodeForSession funcionar
     },
-}) ;
+});

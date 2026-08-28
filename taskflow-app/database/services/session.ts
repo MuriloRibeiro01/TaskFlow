@@ -1,6 +1,4 @@
 // Controla o comportamento da sessão
-
-import 'react-native-url-polyfill/auto';
 import { supabase } from '../supabase/supabase';
 import { db } from '../schemas';
 import type { User } from '@supabase/supabase-js';
