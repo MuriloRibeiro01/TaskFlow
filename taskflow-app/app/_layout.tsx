@@ -1,3 +1,4 @@
+// app/_layout.tsx
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import {
   BarlowCondensed_600SemiBold,
@@ -9,19 +10,40 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
-
-import { supabase } from '@/database/supabase/supabase';
-
+import { View, ActivityIndicator } from 'react-native';
+import { AuthProvider, useAuth } from '@/database/context/auth_context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { initDatabase } from '@/database/schemas';
+import { useEffect } from 'react';
 
 initDatabase();
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useEffect } from 'react';
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
+
+function RootLayoutNav() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      {user ? (
+        <Stack.Screen name="(tabs)" />
+      ) : (
+        <Stack.Screen name="login" />
+      )}
+      <Stack.Screen name="nova-tarefa" />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -31,41 +53,18 @@ export default function RootLayout() {
     BarlowCondensed_900Black_Italic,
     IBMPlexMono_400Regular,
   });
-/*
-  // Inicia o db
+
   useEffect(() => {
-
-    const inserirDado = async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .insert([{ email: 'murilo.email@email.com',  }])
-        .select()
-
-        console.log('DATA', data);
-        console.log('ERROR', error);
-
-      const { data: users } = await supabase
-        .from('users')
-        .select()
-
-        console.log('TODOS', users);
-    }
-
-    inserirDado();
-
+    initDatabase();
   }, []);
-*/
+
   if (!fontsLoaded) return null;
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="nova-tarefa"
-          options={{ headerShown: false }}
-        />
-      </Stack>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
       <StatusBar style="auto" />
     </ThemeProvider>
   );
