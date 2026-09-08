@@ -10,6 +10,7 @@ import {
 import { router, Router } from 'expo-router';
 import { useAuth } from '@/database/context/auth_context';
 import { isLoading } from 'expo-font';
+import NotFoundScreen from './not-found-page';
 
 export default function LoginScreen() {
   const { signIn, user, isLoading } = useAuth();
@@ -34,7 +35,7 @@ export default function LoginScreen() {
       await signIn();
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Erro', 'Não foi possível fazer login. Tente novamente.');
+      router.replace('/not-found-page');
     } finally {
       setIsLoggingIn(false);
     }
