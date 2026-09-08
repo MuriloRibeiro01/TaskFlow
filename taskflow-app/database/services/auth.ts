@@ -6,6 +6,7 @@ import { saveLocalUser } from './session';
 WebBrowser.maybeCompleteAuthSession();
 
 export async function userAuthentication() {
+    
     const redirectUri = makeRedirectUri({
         scheme: 'taskflow',
         path: 'auth/callback',
@@ -13,10 +14,17 @@ export async function userAuthentication() {
 
     console.log('Redirect URI:', redirectUri);
 
+    const {data: {session}} = await supabase.auth.getSession();
+    if(session) {
+        console.log("Sessão encontrada:", session);
+        return session.user;
+    }
+
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
             redirectTo: redirectUri,
+            skipBrowserRedirect: true,
         },
     });
 
@@ -30,7 +38,11 @@ export async function userAuthentication() {
 
     const result = await WebBrowser.openAuthSessionAsync(
         data.url,
-        redirectUri
+        redirectUri,
+        {
+            preferEphemeralSession: false,
+            createTask: true,
+        }
     );
 
     if (result.type !== 'success') {
@@ -43,8 +55,15 @@ export async function userAuthentication() {
     } = await supabase.auth.getUser();
 
     if (userError) {
+        console.error("Erro ao fazer a autenticação:", userError);
         throw userError;
     }
+
+    if (!user) {
+        throw new Error("Não foi possível retornar o usuário após autenticação.");
+    }
+
+    await saveLocalUser(user);
 
     if (user) {
         saveLocalUser(user);
