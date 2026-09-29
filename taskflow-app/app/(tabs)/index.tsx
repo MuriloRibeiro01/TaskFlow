@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -6,9 +6,7 @@ import { Colors, FontSize, Fonts, Spacing } from '@/theme';
 import { completeTask, deleteTask, getAllTasks, reopenTask } from '@/database/tasks';
 import { Task as DBTask } from '@/types/task.types';
 import { Trash2 } from 'lucide-react-native';
-import { userAuthentication } from '@/database/services/auth';
 import { useAuth } from '@/database/context/auth_context';
-import { logout } from '@/database/services/session';
 
 type Priority = 'Alta' | 'Média' | 'Baixa';
 type Status = 'in_progress' | 'pending' | 'done';
@@ -213,14 +211,9 @@ function StatusBadge({ status }: { status: Status }) {
 
 export default function Index() {
 
-  const {user, signOut, isLoading} = useAuth();
+  const { user, signOut } = useAuth();
+  const userId = user?.id ?? '';
 
-  useEffect(() => {
-    if(!isLoading && !user) {
-      router.replace('/login');
-    };
-  }, [user, isLoading]);
-  
 
   const handleLogout = async () => {
     Alert.alert(
@@ -231,10 +224,8 @@ export default function Index() {
         {
           text: 'Sair',
           style: 'destructive',
-          onPress: async () => {
-            await signOut();
-            router.replace('/login');
-          } ,
+          // O Stack.Protected leva para o login quando o usuário sai
+          onPress: signOut,
         },
       ]
     );
@@ -251,11 +242,11 @@ export default function Index() {
 
   useFocusEffect(
     useCallback(() => {
-      const all = getAllTasks();
+      const all = getAllTasks(userId);
       const { today, tomorrow } = splitByDate(all);
       setTodayTasks(today);
       setTomorrowTasks(tomorrow);
-    }, [])
+    }, [userId])
   );
 
   const completed = todayTasks.filter(t => t.status === 'done').length;
@@ -300,7 +291,7 @@ export default function Index() {
             onDelete={() => {
               deleteTask(task.id);
 
-              const all = getAllTasks();
+              const all = getAllTasks(userId);
               const { today, tomorrow } = splitByDate(all);
 
               setTodayTasks(today);

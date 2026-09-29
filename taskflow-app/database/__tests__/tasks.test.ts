@@ -1,6 +1,6 @@
 // TDD das tasks
 
-import { completeTask, createTask, deleteTask, editTask, getTaskById, listTasks, reopenTask } from "../tasks";
+import { completeTask, createTask, deleteTask, editTask, getAllTasks, getTaskById, listTasks, reopenTask } from "../tasks";
 
 import * as SQLite from 'expo-sqlite';
 
@@ -12,7 +12,8 @@ describe('CreateTask', () => {
         const input = {
             title: 'Estudar',
             description: 'Estudar Java',
-            priority: 'high'
+            priority: 'high',
+            user_id: 'user-123'
         }
 
         const tarefaCriada = createTask(input);
@@ -21,6 +22,30 @@ describe('CreateTask', () => {
         expect(tarefaCriada.title).toBe('Estudar');
         expect(tarefaCriada.priority).toBe('high');
         expect(tarefaCriada.status).toBe('pending');
+    });
+
+    it('Vincula a tarefa ao usuário logado e marca como pendente de sincronização', () => {
+        createTask({
+            title: 'Estudar',
+            description: 'Estudar Java',
+            priority: 'high',
+            user_id: 'user-123'
+        });
+
+        expect(db.runSync).toHaveBeenCalledWith(
+            'INSERT INTO tasks (title, description, priority, estimated_pomodoros, due_date, user_id, sync_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            ['Estudar', 'Estudar Java', 'high', null, null, 'user-123', 'pending']
+        );
+    });
+});
+
+describe('GetAllTasks', () => {
+    it('Lista apenas as tarefas do usuário informado', () => {
+        getAllTasks('user-123');
+
+        expect(db.getAllSync).toHaveBeenCalledWith(
+            'SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC', ['user-123']
+        );
     });
 });
 
@@ -59,7 +84,7 @@ describe('CompleteTask', () => {
         completeTask(1);
 
         expect(db.runSync).toHaveBeenCalledWith(
-            'UPDATE tasks SET status = ?, completed_at = datetime("now"), completed_pomodoros = ?  WHERE id = ?', ['done', 4, 1]
+            'UPDATE tasks SET status = ?, completed_at = datetime("now"), completed_pomodoros = ? WHERE id = ?', ['done', 4, 1]
         );
 
     });
