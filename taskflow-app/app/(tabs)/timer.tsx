@@ -4,6 +4,7 @@ import { Colors, FontSize, Fonts, Spacing } from '@/theme';
 import { TaskCard, dbTaskToView } from '.';
 import { getAllTasks, getTaskById } from '@/database/tasks';
 import { useFocusEffect } from 'expo-router';
+import { useAuth } from '@/database/context/auth_context';
 import { Task } from '.';
 
 const INTERVAL_MINUTES = 5;
@@ -79,17 +80,19 @@ export default function Timer() {
     setRemainingSeconds(durationSeconds);
   }
 
+  const { user } = useAuth();
+  const userId = user?.id ?? '';
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   useFocusEffect(
     useCallback(() => {
-      const tudo = getAllTasks();
+      const tudo = getAllTasks(userId);
 
       const convertido = tudo.map(dbTaskToView);
 
       setTasks(convertido);
-    }, [])
+    }, [userId])
   );
   
 
