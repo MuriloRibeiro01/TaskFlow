@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,35 +7,20 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { router, Router } from 'expo-router';
 import { useAuth } from '@/database/context/auth_context';
-import { isLoading } from 'expo-font';
-import NotFoundScreen from './not-found-page';
 
 export default function LoginScreen() {
-  const { signIn, user, isLoading } = useAuth();
+  const { signIn, isLoading } = useAuth();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  useEffect(() => {
-    if(!isLoading && user) {
-      router.replace('/(tabs)');
-    };
-  }, [user, isLoading]);
-
+  // O redirecionamento após o login é feito pelo Stack.Protected em app/_layout.tsx
   const handleLogin = async () => {
-
-    if(!signIn) {
-      console.error("signIn is not defined.");
-      Alert.alert('Erro', 'Função de login não disponível.');
-      return;
-    }
-
     try {
       setIsLoggingIn(true);
       await signIn();
     } catch (error) {
       console.error('Login error:', error);
-      router.replace('/not-found-page');
+      Alert.alert('Erro ao entrar', 'Não foi possível entrar com o Google. Tente novamente.');
     } finally {
       setIsLoggingIn(false);
     }
@@ -47,10 +32,6 @@ export default function LoginScreen() {
         <ActivityIndicator size="large" color="#007AFF" />
       </View>
     );
-  }
-
-  if(user) {
-    return null;
   }
 
   return (

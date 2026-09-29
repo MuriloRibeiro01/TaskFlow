@@ -25,17 +25,3 @@ export async function saveLocalUser(user: User) {
         user.user_metadata?.avatar_url ?? null
     );
 }
-
-export async function restoreLocalUser() {
-    const {
-        data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-        return null;
-    }
-
-    saveLocalUser(user);
-
-    return user;
-}

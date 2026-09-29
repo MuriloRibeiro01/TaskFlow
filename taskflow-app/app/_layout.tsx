@@ -1,4 +1,7 @@
 // app/_layout.tsx
+// Polyfills precisam vir antes de qualquer import que carregue o Supabase
+import '@/database/supabase/polyfills';
+
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import {
   BarlowCondensed_600SemiBold,
@@ -8,18 +11,13 @@ import {
 import { IBMPlexMono_400Regular } from '@expo-google-fonts/ibm-plex-mono';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import 'react-native-url-polyfill/auto';
+import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { View, ActivityIndicator } from 'react-native';
 import { AuthProvider, useAuth } from '@/database/context/auth_context';
 
-import '@/database/supabase/polyfills';
-
-import { initDatabase } from '@/database/schemas';
-
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { initDatabase } from '@/database/schemas';
-import { useEffect } from 'react';
 
 initDatabase();
 
@@ -38,14 +36,18 @@ function RootLayoutNav() {
     );
   }
 
+  // Stack.Protected bloqueia as rotas de fato: quando o guard muda,
+  // o expo-router redireciona sozinho para a primeira tela disponível
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      {user ? (
+      <Stack.Protected guard={!!user}>
         <Stack.Screen name="(tabs)" />
-      ) : (
+        <Stack.Screen name="nova-tarefa" />
+      </Stack.Protected>
+      <Stack.Protected guard={!user}>
         <Stack.Screen name="login" />
-      )}
-      <Stack.Screen name="nova-tarefa" />
+      </Stack.Protected>
+      <Stack.Screen name="auth/callback" />
     </Stack>
   );
 }
@@ -58,10 +60,6 @@ export default function RootLayout() {
     BarlowCondensed_900Black_Italic,
     IBMPlexMono_400Regular,
   });
-
-  useEffect(() => {
-    initDatabase();
-  }, []);
 
   if (!fontsLoaded) return null;
 
