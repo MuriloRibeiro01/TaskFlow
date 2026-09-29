@@ -14,15 +14,15 @@
 
 Autenticação exclusivamente por OAuth (Google e Apple): o app obtém o token do provedor, a TaskFlow API o valida e emite um JWT próprio.
 
-> ⚠️ Em transição: o app ainda usa o Supabase para autenticação. A migração para a TaskFlow API está descrita no Documento de Arquitetura v2.0.
+> ⚠️ Em transição: o app ainda usa o Supabase para autenticação. A migração para a TaskFlow API está descrita no Documento de Arquitetura v2.1.
 
 ## Documentação
 
 | Documento | Arquivo |
 |---|---|
-| Documento de Visão v2.0 | `Documents/TaskFlow_DocumentoDeVisao.docx` |
-| Documento de Requisitos v2.0 | `Documents/TaskFlow_DocumentoDeRequisitos.docx` |
-| Documento de Arquitetura v2.0 | `Documents/TaskFlow_DocumentoDeArquitetura.docx` |
+| Documento de Visão v2.1 | `Documents/TaskFlow_DocumentoDeVisao.docx` |
+| Documento de Requisitos v2.1 | `Documents/TaskFlow_DocumentoDeRequisitos.docx` |
+| Documento de Arquitetura v2.1 | `Documents/TaskFlow_DocumentoDeArquitetura.docx` |
 | Design System v1.0 | `Documents/TaskFlow_DesignSystem_v1.0.pdf` |
 | Protótipos de alta fidelidade | `Prototipos-Alta/` |
 | Versões anteriores (v1.0) | `Documents/v1.0/` |
