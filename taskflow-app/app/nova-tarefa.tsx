@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, FontSize, Fonts, Spacing } from '@/theme';
 import { createTask } from '@/database/tasks';
+import { useAuth } from '@/database/context/auth_context';
 
 type Priority = 'low' | 'medium' | 'high';
 
@@ -31,6 +32,7 @@ function Checkbox({ checked, onPress }: { checked: boolean; onPress: () => void 
 }
 
 export default function NovaTarefa() {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority | null>(null);
@@ -54,7 +56,7 @@ export default function NovaTarefa() {
   }
 
   function handleCreate() {
-    if (!title.trim()) return;
+    if (!title.trim() || !user) return;
 
     const dueDateParts: string[] = [];
     if (useDate && dateText.trim()) dueDateParts.push(dateText.trim());
@@ -66,6 +68,7 @@ export default function NovaTarefa() {
       priority: priority ?? 'low',
       estimated_pomodoros: usePomodoro ? Math.round(pomodoroMins / 25) : undefined,
       due_date: dueDateParts.length > 0 ? dueDateParts.join(' ') : undefined,
+      user_id: user.id,
     });
 
     router.back();
