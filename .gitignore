@@ -23,3 +23,5 @@ Thumbs.db
 # Build outputs
 android/
 ios/
+# Arquivos de trava do Office
+~$*
