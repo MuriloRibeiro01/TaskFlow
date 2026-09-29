@@ -5,19 +5,32 @@ import { saveLocalUser } from './session';
 
 WebBrowser.maybeCompleteAuthSession();
 
+// Lê os parâmetros do redirect OAuth, tanto da query (?code=...) quanto do fragmento (#error=...)
+export function extractAuthParams(url: string): Record<string, string> {
+    const params: Record<string, string> = {};
+    const [semFragmento, fragmento] = url.split('#');
+    const query = semFragmento.split('?')[1];
+
+    for (const parte of [query, fragmento]) {
+        if (!parte) continue;
+        new URLSearchParams(parte).forEach((valor, chave) => {
+            params[chave] = valor;
+        });
+    }
+
+    return params;
+}
+
 export async function userAuthentication() {
-    
+
     const redirectUri = makeRedirectUri({
         scheme: 'taskflow',
         path: 'auth/callback',
     });
 
-    console.log('Redirect URI:', redirectUri);
-
-    const {data: {session}} = await supabase.auth.getSession();
-    if(session) {
-        console.log("Sessão encontrada:", session);
-        return session.user;
+    const { data: { session: sessaoAtual } } = await supabase.auth.getSession();
+    if (sessaoAtual) {
+        return sessaoAtual.user;
     }
 
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -49,37 +62,46 @@ export async function userAuthentication() {
         return null;
     }
 
+    const params = extractAuthParams(result.url);
+
+    if (params.error) {
+        throw new Error(params.error_description ?? params.error);
+    }
+
+    if (!params.code) {
+        throw new Error('Código de autenticação ausente no retorno do OAuth.');
+    }
+
+    // Fluxo PKCE: troca o code pela sessão (usa o code_verifier salvo no signInWithOAuth)
     const {
-        data: { user },
-        error: userError,
-    } = await supabase.auth.getUser();
+        data: { session },
+        error: exchangeError,
+    } = await supabase.auth.exchangeCodeForSession(params.code);
 
-    if (userError) {
-        console.error("Erro ao fazer a autenticação:", userError);
-        throw userError;
+    if (exchangeError) {
+        throw exchangeError;
     }
 
-    if (!user) {
-        throw new Error("Não foi possível retornar o usuário após autenticação.");
+    if (!session) {
+        throw new Error('Não foi possível criar a sessão após autenticação.');
     }
+
+    const user = session.user;
 
     await saveLocalUser(user);
 
-    if (user) {
-        saveLocalUser(user);
-        const { error: profileError } = await supabase
-            .from('users')
-            .upsert({
-                id: user.id,
-                email: user.email,
-                display_name: user.user_metadata?.full_name,
-                avatar_url: user.user_metadata?.avatar_url,
-            });
+    // O perfil é complementar: se o upsert falhar, a sessão continua válida
+    const { error: profileError } = await supabase
+        .from('users')
+        .upsert({
+            id: user.id,
+            email: user.email,
+            display_name: user.user_metadata?.full_name,
+            avatar_url: user.user_metadata?.avatar_url,
+        });
 
-        if (profileError) {
-            throw profileError;
-        }
-
+    if (profileError) {
+        console.error('Erro ao salvar o perfil do usuário:', profileError);
     }
 
     return user;
