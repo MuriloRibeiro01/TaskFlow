@@ -12,10 +12,11 @@ export function createTask(input: {
     priority: string;
     estimated_pomodoros?: number;
     due_date?: string;
+    user_id: string;
 }): Task {
     const resultado = db.runSync(
-        'INSERT INTO tasks (title, description, priority, estimated_pomodoros, due_date) VALUES (?, ?, ?, ?, ?)',
-        [input.title, input.description, input.priority, input.estimated_pomodoros ?? null, input.due_date ?? null]
+        'INSERT INTO tasks (title, description, priority, estimated_pomodoros, due_date, user_id, sync_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [input.title, input.description, input.priority, input.estimated_pomodoros ?? null, input.due_date ?? null, input.user_id, 'pending']
     );
 
     const tarefa = db.getFirstSync<Task>(
@@ -55,9 +56,9 @@ export function completeTask(id: number) {
     )
 }
 
-export function getAllTasks(): Task[] {
+export function getAllTasks(userId: string): Task[] {
     return db.getAllSync<Task>(
-        'SELECT * FROM tasks ORDER BY created_at DESC'
+        'SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC', [userId]
     );
 }
 
