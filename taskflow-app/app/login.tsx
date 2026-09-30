@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Alert,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   View,
@@ -41,7 +40,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={colors.ink} />
       <View style={styles.screen}>
         <View style={styles.content}>
@@ -86,7 +85,7 @@ export default function LoginScreen() {
           VINÍCIUS O. · VINÍCIUS R.
         </Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
