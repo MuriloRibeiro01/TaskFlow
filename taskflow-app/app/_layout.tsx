@@ -8,6 +8,7 @@ import {
   BarlowCondensed_700Bold,
   BarlowCondensed_900Black_Italic,
 } from '@expo-google-fonts/barlow-condensed';
+import { DMSans_400Regular } from '@expo-google-fonts/dm-sans';
 import { IBMPlexMono_400Regular } from '@expo-google-fonts/ibm-plex-mono';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -58,6 +59,7 @@ export default function RootLayout() {
     BarlowCondensed_700Bold,
     BarlowCondensed_600SemiBold,
     BarlowCondensed_900Black_Italic,
+    DMSans_400Regular,
     IBMPlexMono_400Regular,
   });
 
