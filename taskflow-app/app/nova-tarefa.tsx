@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -11,6 +13,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Colors, FontSize, Fonts, Spacing } from '@/theme';
 import { createTask } from '@/database/tasks';
 import { useAuth } from '@/database/context/auth_context';
@@ -23,10 +26,13 @@ const PRIORITY_OPTIONS: { value: Priority; label: string; symbol: string }[] = [
   { value: 'high', label: 'Alta', symbol: '▲' },
 ];
 
-function Checkbox({ checked, onPress }: { checked: boolean; onPress: () => void }) {
+function Checkbox({ checked, onPress, label }: { checked: boolean; onPress: () => void; label: string }) {
   return (
-    <Pressable onPress={onPress} style={[styles.checkbox, checked && styles.checkboxChecked]}>
-      {checked && <Text style={styles.checkboxMark}>✓</Text>}
+    <Pressable accessibilityRole="checkbox" accessibilityState={{ checked }} onPress={onPress} style={styles.checkControl}>
+      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+        {checked && <Text style={styles.checkboxMark}>✓</Text>}
+      </View>
+      <Text style={styles.checkLabel}>{label}</Text>
     </Pressable>
   );
 }
@@ -35,380 +41,308 @@ export default function NovaTarefa() {
   const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<Priority | null>(null);
+  const [priority, setPriority] = useState<Priority>('medium');
   const [useDate, setUseDate] = useState(false);
   const [useHour, setUseHour] = useState(false);
-  const [dateText, setDateText] = useState('');
-  const [hourText, setHourText] = useState('');
+  const [deadline, setDeadline] = useState(() => new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [usePomodoro, setUsePomodoro] = useState(false);
-  const [pomodoroMins, setPomodoroMins] = useState(25);
+  const [estimatedPomodoros, setEstimatedPomodoros] = useState(2);
+  const [showTitleError, setShowTitleError] = useState(false);
 
-  const today = new Date()
-    .toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-    .toUpperCase();
+  const now = new Date();
+  const weekday = now.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '').toUpperCase();
+  const day = now.toLocaleDateString('pt-BR', { day: '2-digit' });
+  const month = now.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+  const year = now.getFullYear();
+  const today = `${weekday}, ${day} ${month} ${year}`;
 
-  function decreaseMins() {
-    setPomodoroMins(prev => Math.max(25, prev - 25));
-  }
+  const changeTitle = (value: string) => {
+    setTitle(value);
+    if (value.trim()) setShowTitleError(false);
+  };
 
-  function increaseMins() {
-    setPomodoroMins(prev => Math.min(200, prev + 25));
-  }
+  const formatDate = (value: Date) => value.toLocaleDateString('pt-BR');
+  const formatTime = (value: Date) => value.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-  function handleCreate() {
-    if (!title.trim() || !user) return;
+  const updateDeadline = (mode: 'date' | 'time') => (_event: DateTimePickerEvent, selectedValue?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+      setShowTimePicker(false);
+    }
 
-    const dueDateParts: string[] = [];
-    if (useDate && dateText.trim()) dueDateParts.push(dateText.trim());
-    if (useHour && hourText.trim()) dueDateParts.push(hourText.trim());
+    if (!selectedValue) return;
+
+    setDeadline((current) => {
+      const next = new Date(current);
+      if (mode === 'date') {
+        next.setFullYear(selectedValue.getFullYear(), selectedValue.getMonth(), selectedValue.getDate());
+      } else {
+        next.setHours(selectedValue.getHours(), selectedValue.getMinutes(), 0, 0);
+      }
+      return next;
+    });
+  };
+
+  const handleCreate = () => {
+    if (!title.trim()) {
+      setShowTitleError(true);
+      return;
+    }
+
+    if (!user) {
+      Alert.alert('Sessão necessária', 'Entre na sua conta para criar uma tarefa.');
+      return;
+    }
 
     createTask({
       title: title.trim(),
       description: description.trim(),
-      priority: priority ?? 'low',
-      estimated_pomodoros: usePomodoro ? Math.round(pomodoroMins / 25) : undefined,
-      due_date: dueDateParts.length > 0 ? dueDateParts.join(' ') : undefined,
+      priority,
+      estimated_pomodoros: usePomodoro ? estimatedPomodoros : undefined,
+      due_date: useDate || useHour ? deadline.toISOString() : undefined,
       user_id: user.id,
     });
 
     router.back();
-  }
-
-  const canCreate = title.trim().length > 0;
+  };
 
   return (
-    <View style={styles.root}>
-      {/* Header dark */}
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.headerTitle, { fontFamily: Fonts.barlowBold }]}>NOVA TAREFA</Text>
-          <Text style={[styles.headerDate, { fontFamily: Fonts.mono }]}>{today}</Text>
-        </View>
-        <Pressable style={styles.closeButton} onPress={() => router.back()}>
-          <Text style={[styles.closeText, { fontFamily: Fonts.barlowBold }]}>✕</Text>
-        </Pressable>
-      </View>
-
-      {/* Card content */}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          style={styles.card}
-          contentContainerStyle={styles.cardContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Nome */}
-          <Text style={[styles.fieldLabel, { fontFamily: Fonts.barlowBold }]}>Nome da tarefa</Text>
-          <TextInput
-            style={[styles.input, { fontFamily: Fonts.mono }]}
-            placeholder="EX: Passear com o cachorro"
-            placeholderTextColor={Colors.cinza}
-            value={title}
-            onChangeText={setTitle}
-            maxLength={80}
-          />
-
-          {/* Descrição */}
-          <Text style={[styles.fieldLabel, { fontFamily: Fonts.barlowBold }]}>Descrição da tarefa</Text>
-          <TextInput
-            style={[styles.input, styles.inputMultiline, { fontFamily: Fonts.mono }]}
-            placeholder="Ex: Lembrar de pegar a coleira azul..."
-            placeholderTextColor={Colors.cinza}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            textAlignVertical="top"
-          />
-
-          {/* Data e Hora */}
-          <Text style={[styles.fieldLabel, { fontFamily: Fonts.barlowBold }]}>Data e Hora</Text>
-          <View style={styles.checkRow}>
-            <Checkbox checked={useDate} onPress={() => setUseDate(v => !v)} />
-            <Text style={[styles.checkLabel, { fontFamily: Fonts.mono }]}>Data</Text>
-            <Checkbox checked={useHour} onPress={() => setUseHour(v => !v)} />
-            <Text style={[styles.checkLabel, { fontFamily: Fonts.mono }]}>Hora</Text>
+    <View style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.tinta} />
+      <View style={styles.root}>
+        <View style={styles.header}>
+          <View>
+            <Text accessibilityRole="header" style={styles.headerTitle}>NOVA TAREFA</Text>
+            <Text style={styles.headerDate}>{today}</Text>
           </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Fechar nova tarefa" hitSlop={16} onPress={() => router.back()}>
+            <Text style={styles.closeText}>×</Text>
+          </Pressable>
+        </View>
 
-          {(useDate || useHour) && (
-            <View style={styles.dateRow}>
-              <Ionicons name="calendar-outline" size={20} color={Colors.grafite} style={styles.calIcon} />
-              {useDate ? (
-                <TextInput
-                  style={[styles.dateInput, { fontFamily: Fonts.mono }]}
-                  placeholder="18 de abril"
-                  placeholderTextColor={Colors.cinza}
-                  value={dateText}
-                  onChangeText={setDateText}
-                />
-              ) : (
-                <Text style={[styles.dateInputEmpty, { fontFamily: Fonts.mono }]}>—</Text>
-              )}
-              <View style={styles.dateVertDivider} />
-              {useHour ? (
-                <TextInput
-                  style={[styles.dateInputHour, { fontFamily: Fonts.mono, color: Colors.vermelho }]}
-                  placeholder="20 : 00"
-                  placeholderTextColor={Colors.cinza}
-                  value={hourText}
-                  onChangeText={setHourText}
-                  keyboardType="numeric"
-                />
-              ) : (
-                <Text style={[styles.dateInputEmpty, { fontFamily: Fonts.mono }]}>—</Text>
-              )}
+        <KeyboardAvoidingView style={styles.keyboardContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <Text style={styles.fieldLabel}>Nome da tarefa</Text>
+            <TextInput
+              accessibilityLabel="Nome da tarefa"
+              style={[styles.input, showTitleError && styles.inputError]}
+              placeholder="Ex: Revisar protótipo no Figma"
+              placeholderTextColor={Colors.cinza}
+              value={title}
+              onChangeText={changeTitle}
+              maxLength={80}
+              returnKeyType="next"
+            />
+            {showTitleError && <Text style={styles.errorText}>▲ Informe o nome da tarefa.</Text>}
+
+            <Text style={styles.fieldLabel}>Descrição da tarefa</Text>
+            <TextInput
+              accessibilityLabel="Descrição da tarefa"
+              style={[styles.input, styles.descriptionInput]}
+              placeholder="Ex: Revisar fluxo de criação e coleta de feedback"
+              placeholderTextColor={Colors.cinza}
+              value={description}
+              onChangeText={setDescription}
+              multiline
+              textAlignVertical="top"
+            />
+
+            <Text style={styles.fieldLabel}>Data e Hora</Text>
+            <View style={styles.checkRow}>
+              <Checkbox
+                checked={useDate}
+                onPress={() => {
+                  setUseDate((value) => !value);
+                  setShowDatePicker(false);
+                }}
+                label="Data"
+              />
+              <Checkbox
+                checked={useHour}
+                onPress={() => {
+                  setUseHour((value) => !value);
+                  setShowTimePicker(false);
+                }}
+                label="Hora"
+              />
             </View>
-          )}
 
-          {/* Prioridade */}
-          <Text style={[styles.fieldLabel, { fontFamily: Fonts.barlowBold }]}>Nível de prioridade</Text>
-          <View style={styles.priorityRow}>
-            {PRIORITY_OPTIONS.map(opt => {
-              const isSelected = priority === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  style={[
-                    styles.priorityBtn,
-                    isSelected && styles.priorityBtnSelected,
-                  ]}
-                  onPress={() => setPriority(opt.value)}
-                >
-                  <Text
+            {(useDate || useHour) && (
+              <View style={styles.deadlineRow}>
+                {useDate && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Selecionar data"
+                    style={styles.deadlineInput}
+                    onPress={() => {
+                      setShowTimePicker(false);
+                      setShowDatePicker((visible) => !visible);
+                    }}
+                  >
+                    <Text
+                      accessibilityLabel="Data da tarefa"
+                      style={styles.deadlineText}
+                    >
+                      {formatDate(deadline)}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={16} color={Colors.grafite} />
+                  </Pressable>
+                )}
+                {useHour && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Selecionar hora"
+                    style={styles.deadlineInput}
+                    onPress={() => {
+                      setShowDatePicker(false);
+                      setShowTimePicker((visible) => !visible);
+                    }}
+                  >
+                    <Text
+                      accessibilityLabel="Hora da tarefa"
+                      style={styles.deadlineText}
+                    >
+                      {formatTime(deadline)}
+                    </Text>
+                    <Ionicons name="time-outline" size={16} color={Colors.grafite} />
+                  </Pressable>
+                )}
+              </View>
+            )}
+            {showDatePicker && useDate && (
+              <DateTimePicker
+                value={deadline}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={updateDeadline('date')}
+                locale="pt-BR"
+              />
+            )}
+            {showTimePicker && useHour && (
+              <DateTimePicker
+                value={deadline}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={updateDeadline('time')}
+                is24Hour
+                locale="pt-BR"
+              />
+            )}
+
+            <Text style={styles.fieldLabel}>Nível de prioridade</Text>
+            <View style={styles.priorityRow}>
+              {PRIORITY_OPTIONS.map((option) => {
+                const selected = priority === option.value;
+                return (
+                  <Pressable
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    key={option.value}
+                    onPress={() => setPriority(option.value)}
                     style={[
-                      styles.priorityBtnText,
-                      { fontFamily: Fonts.mono },
-                      isSelected && styles.priorityBtnTextSelected,
+                      styles.priorityButton,
+                      selected && styles.priorityButtonSelected,
                     ]}
                   >
-                    {opt.label} {opt.symbol}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                    <Text style={[
+                      styles.priorityText,
+                      selected && styles.priorityTextSelected,
+                    ]}>
+                      {option.label} {option.symbol}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
-          {/* Pomodoro */}
-          <Text style={[styles.fieldLabel, { fontFamily: Fonts.barlowBold }]}>Pomodoro</Text>
-          <View style={styles.checkRow}>
-            <Checkbox checked={usePomodoro} onPress={() => setUsePomodoro(v => !v)} />
-            <Text style={[styles.checkLabel, { fontFamily: Fonts.mono }]}>Utilizar pomodoro</Text>
-          </View>
+            <Text style={styles.fieldLabel}>Pomodoro</Text>
+            <Checkbox checked={usePomodoro} onPress={() => setUsePomodoro((value) => !value)} label="Utilizar pomodoro" />
 
-          {usePomodoro && (
-            <>
-              <Text style={[styles.tempoLabel, { fontFamily: Fonts.barlowSemiBold }]}>Tempo:</Text>
-              <View style={styles.stepperRow}>
-                <Pressable onPress={increaseMins} hitSlop={12}>
-                  <Text style={[styles.stepperSymbol, { fontFamily: Fonts.barlowBold }]}>+</Text>
-                </Pressable>
-                <Text style={[styles.stepperValue, { fontFamily: Fonts.mono }]}>{pomodoroMins} min</Text>
-                <Pressable onPress={decreaseMins} hitSlop={12}>
-                  <Text style={[styles.stepperSymbol, { fontFamily: Fonts.barlowBold }]}>—</Text>
-                </Pressable>
+            {usePomodoro && (
+              <View style={styles.estimate}>
+                <Text style={styles.estimateLabel}>Tempo estimado</Text>
+                <View style={styles.stepperRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Diminuir Pomodoros"
+                    style={styles.stepperButton}
+                    onPress={() => setEstimatedPomodoros((value) => Math.max(1, value - 1))}
+                  >
+                    <Text style={styles.stepperSymbol}>−</Text>
+                  </Pressable>
+                  <Text style={styles.pomodoroValue}>{estimatedPomodoros} pom.</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Aumentar Pomodoros"
+                    style={styles.stepperButton}
+                    onPress={() => setEstimatedPomodoros((value) => Math.min(8, value + 1))}
+                  >
+                    <Text style={styles.stepperSymbol}>+</Text>
+                  </Pressable>
+                </View>
+                <Text style={styles.estimateCaption}>≈ {estimatedPomodoros * 25} MIN DE FOCO</Text>
               </View>
-            </>
-          )}
+            )}
 
-          <View style={{ height: Spacing.sp8 }} />
-        </ScrollView>
-
-        <Pressable
-          style={[styles.createButton, !canCreate && styles.createButtonDisabled]}
-          onPress={handleCreate}
-          disabled={!canCreate}
-        >
-          <Text style={[styles.createButtonText, { fontFamily: Fonts.barlowSemiBold }]}>Criar tarefa</Text>
-        </Pressable>
-      </KeyboardAvoidingView>
+          </ScrollView>
+          <View style={styles.floatingAction}>
+            <Pressable accessibilityRole="button" style={styles.createButton} onPress={handleCreate}>
+              <Text style={styles.createButtonText}>Criar tarefa</Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: Colors.tinta,
-  },
+  safeArea: { flex: 1, backgroundColor: Colors.tinta },
+  root: { flex: 1, backgroundColor: Colors.papel },
   header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    paddingTop: Spacing.sp12,
-    paddingBottom: Spacing.sp5,
-    paddingHorizontal: Spacing.sp5,
+    alignItems: 'flex-start', backgroundColor: Colors.tinta, flexDirection: 'row', justifyContent: 'space-between',
+    paddingBottom: Spacing.sp5, paddingHorizontal: Spacing.sp5, paddingTop: 60,
   },
-  headerTitle: {
-    fontSize: FontSize.headingXl,
-    color: Colors.papel,
-    letterSpacing: 0.5,
-  },
-  headerDate: {
-    fontSize: FontSize.label,
-    color: Colors.cinza,
-    marginTop: Spacing.sp1,
-    letterSpacing: 0.5,
-  },
-  closeButton: {
-    width: 36,
-    height: 36,
-    borderWidth: 1,
-    borderColor: Colors.papel,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeText: {
-    fontSize: 16,
-    color: Colors.papel,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: Colors.papel,
-  },
-  cardContent: {
-    paddingHorizontal: Spacing.sp5,
-    paddingTop: Spacing.sp6,
-  },
-  fieldLabel: {
-    fontSize: FontSize.headingLg,
-    color: Colors.tinta,
-    marginBottom: Spacing.sp3,
-    marginTop: Spacing.sp5,
-  },
+  headerTitle: { color: Colors.papel, fontFamily: Fonts.barlowBold, fontSize: 28, letterSpacing: 0.35, lineHeight: 32 },
+  headerDate: { color: Colors.cinza, fontFamily: Fonts.mono, fontSize: FontSize.label, letterSpacing: 0.5, marginTop: 2 },
+  closeText: { color: Colors.papel, fontFamily: Fonts.barlowSemiBold, fontSize: 28, lineHeight: 30 },
+  keyboardContainer: { flex: 1 },
+  form: { paddingBottom: 132, paddingHorizontal: Spacing.sp5, paddingTop: Spacing.sp5 },
+  fieldLabel: { color: Colors.tinta, fontFamily: Fonts.barlowBold, fontSize: 18, lineHeight: 22, marginBottom: Spacing.sp2, marginTop: Spacing.sp5 },
   input: {
-    borderWidth: 1,
-    borderColor: Colors.tinta,
-    padding: Spacing.sp4,
-    fontSize: FontSize.body,
-    color: Colors.tinta,
-    backgroundColor: Colors.papel,
+    backgroundColor: Colors.papel2, borderColor: Colors.papel3, borderWidth: 1, color: Colors.tinta,
+    fontFamily: 'DMSans_400Regular', fontSize: FontSize.body, minHeight: 56, paddingHorizontal: Spacing.sp4, paddingVertical: Spacing.sp3,
   },
-  inputMultiline: {
-    height: 100,
+  inputError: { borderColor: Colors.vermelho },
+  descriptionInput: { height: 94 },
+  errorText: { color: Colors.vermelho, fontFamily: Fonts.mono, fontSize: FontSize.label, letterSpacing: 0.25, marginTop: Spacing.sp2 },
+  checkRow: { flexDirection: 'row', gap: Spacing.sp6 },
+  checkControl: { alignItems: 'center', flexDirection: 'row', gap: Spacing.sp2 },
+  checkbox: { alignItems: 'center', borderColor: Colors.tinta, borderWidth: 1, height: 22, justifyContent: 'center', width: 22 },
+  checkboxChecked: { backgroundColor: Colors.vermelho, borderColor: Colors.vermelho },
+  checkboxMark: { color: Colors.papel, fontFamily: Fonts.barlowBold, fontSize: 15, lineHeight: 18 },
+  checkLabel: { color: Colors.tinta, fontFamily: 'DMSans_400Regular', fontSize: FontSize.body },
+  deadlineRow: { flexDirection: 'row', gap: Spacing.sp3, marginTop: Spacing.sp3 },
+  deadlineInput: {
+    alignItems: 'center', backgroundColor: Colors.papel2, borderColor: Colors.papel3, borderWidth: 1,
+    flex: 1, flexDirection: 'row', height: 50, paddingHorizontal: Spacing.sp3,
   },
-  checkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sp2,
-    marginBottom: Spacing.sp3,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderWidth: 1,
-    borderColor: Colors.tinta,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.papel,
-  },
-  checkboxChecked: {
-    backgroundColor: Colors.vermelho,
-    borderColor: Colors.vermelho,
-  },
-  checkboxMark: {
-    color: Colors.papel,
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  checkLabel: {
-    fontSize: FontSize.body,
-    color: Colors.tinta,
-    marginRight: Spacing.sp5,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.tinta,
-    marginBottom: Spacing.sp3,
-    height: 48,
-  },
-  calIcon: {
-    paddingHorizontal: Spacing.sp3,
-  },
-  dateInput: {
-    flex: 1,
-    paddingHorizontal: Spacing.sp2,
-    fontSize: FontSize.body,
-    color: Colors.tinta,
-  },
-  dateInputHour: {
-    width: 80,
-    paddingHorizontal: Spacing.sp3,
-    fontSize: FontSize.body,
-    textAlign: 'center',
-  },
-  dateInputEmpty: {
-    flex: 1,
-    paddingHorizontal: Spacing.sp3,
-    fontSize: FontSize.body,
-    color: Colors.cinza,
-    textAlignVertical: 'center',
-  },
-  dateVertDivider: {
-    width: 1,
-    height: '100%',
-    backgroundColor: Colors.tinta,
-  },
-  priorityRow: {
-    flexDirection: 'row',
-    gap: Spacing.sp2,
-  },
-  priorityBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: Colors.papel3,
-    paddingVertical: Spacing.sp3,
-    alignItems: 'center',
-    backgroundColor: Colors.papel2,
-  },
-  priorityBtnSelected: {
-    borderColor: Colors.vermelho,
-    backgroundColor: Colors.papel,
-  },
-  priorityBtnText: {
-    fontSize: FontSize.body,
-    color: Colors.cinza,
-    letterSpacing: 0.3,
-  },
-  priorityBtnTextSelected: {
-    color: Colors.vermelho,
-  },
-  tempoLabel: {
-    fontSize: FontSize.headingMd,
-    color: Colors.tinta,
-    marginTop: Spacing.sp3,
-    marginBottom: Spacing.sp3,
-  },
-  stepperRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sp10,
-  },
-  stepperSymbol: {
-    fontSize: FontSize.headingLg,
-    color: Colors.vermelho,
-    lineHeight: 32,
-  },
-  stepperValue: {
-    fontSize: FontSize.headingMd,
-    color: Colors.vermelho,
-    minWidth: 70,
-    textAlign: 'center',
-  },
-  createButton: {
-    backgroundColor: Colors.vermelho,
-    paddingVertical: Spacing.sp5,
-    alignItems: 'center',
-  },
-  createButtonDisabled: {
-    opacity: 0.4,
-  },
-  createButtonText: {
-    fontSize: FontSize.headingMd,
-    color: Colors.papel,
-    letterSpacing: 0.5,
-  },
+  deadlineText: { color: Colors.tinta, flex: 1, fontFamily: Fonts.mono, fontSize: 12 },
+  priorityRow: { flexDirection: 'row', gap: Spacing.sp2 },
+  priorityButton: { alignItems: 'center', backgroundColor: Colors.papel, borderColor: Colors.papel3, borderWidth: 1, flex: 1, height: 48, justifyContent: 'center' },
+  priorityButtonSelected: { backgroundColor: Colors.vermelho, borderColor: Colors.vermelho },
+  priorityText: { color: Colors.cinza, fontFamily: Fonts.mono, fontSize: 11, letterSpacing: 0.2 },
+  priorityTextSelected: { color: Colors.papel },
+  estimate: { marginTop: Spacing.sp4 },
+  estimateLabel: { color: Colors.tinta, fontFamily: Fonts.barlowBold, fontSize: 16, marginBottom: Spacing.sp2 },
+  stepperRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  stepperButton: { alignItems: 'center', borderColor: Colors.tinta, borderWidth: 1, height: 46, justifyContent: 'center', width: 46 },
+  stepperSymbol: { color: Colors.tinta, fontFamily: Fonts.mono, fontSize: 20 },
+  pomodoroValue: { color: Colors.tinta, fontFamily: Fonts.barlowBold, fontSize: 22 },
+  estimateCaption: { color: Colors.cinza, fontFamily: Fonts.mono, fontSize: FontSize.label, letterSpacing: 1, marginTop: Spacing.sp2, textAlign: 'center' },
+  floatingAction: { bottom: 24, left: Spacing.sp5, position: 'absolute', right: Spacing.sp5 },
+  createButton: { alignItems: 'center', backgroundColor: Colors.vermelho, height: 60, justifyContent: 'center' },
+  createButtonText: { color: Colors.papel, fontFamily: Fonts.barlowBold, fontSize: 21, lineHeight: 24 },
 });
