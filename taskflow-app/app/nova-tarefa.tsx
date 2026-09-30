@@ -86,13 +86,13 @@ export default function NovaTarefa() {
   };
 
   const handleCreate = () => {
-    if (!title.trim()) {
-      setShowTitleError(true);
+    if (!user) {
+      Alert.alert('Sessão necessária', 'Entre na sua conta para criar uma tarefa.');
       return;
     }
 
-    if (!user) {
-      Alert.alert('Sessão necessária', 'Entre na sua conta para criar uma tarefa.');
+    if (!title.trim()) {
+      setShowTitleError(true);
       return;
     }
 

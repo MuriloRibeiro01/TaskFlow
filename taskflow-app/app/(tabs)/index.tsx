@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Colors, FontSize, Fonts, Spacing } from '@/theme';
@@ -7,9 +7,13 @@ import { completeTask, deleteTask, getAllTasks, reopenTask } from '@/database/ta
 import { Task as DBTask } from '@/types/task.types';
 import { Trash2 } from 'lucide-react-native';
 import { useAuth } from '@/database/context/auth_context';
+import { Swipeable } from 'react-native-gesture-handler';
 
 type Priority = 'Alta' | 'Média' | 'Baixa';
 type Status = 'in_progress' | 'pending' | 'done';
+type StatusFilter = 'all' | 'open';
+type PriorityFilter = 'all' | 'low' | 'medium' | 'high';
+type FilterMenu = 'status' | 'priority' | null;
 
 export interface Task {
   id: number;
@@ -21,6 +25,18 @@ export interface Task {
   totalPips: number;
   donePips: number;
 }
+
+const STATUS_FILTER_LABELS: Record<StatusFilter, string> = {
+  all: 'Todas',
+  open: 'Não concluídas',
+};
+
+const PRIORITY_FILTER_LABELS: Record<PriorityFilter, string> = {
+  all: 'Todas',
+  low: 'Baixa',
+  medium: 'Média',
+  high: 'Alta',
+};
 
 export function dbTaskToView(t: DBTask): Task {
   const priorityMap: Record<string, Priority> = { high: 'Alta', medium: 'Média', low: 'Baixa' };
@@ -113,13 +129,11 @@ export function TaskCard({
     selected = false,
     onPress,
     onCheck,
-    onDelete,
    }: {
     task: Task;
     selected?: boolean;
     onPress?: () => void;
     onCheck?: () =>  void;
-    onDelete?: () => void;
    }) {
   const isDone = task.status === 'done';
   const isActive = task.status === 'in_progress';
@@ -160,10 +174,6 @@ export function TaskCard({
 
             <View style={styles.headerActions}>
               <PriorityBadge priority={task.priority} />
-
-              <Pressable onPress={onDelete}>
-                <Trash2 size={18} color={Colors.cinza} />
-              </Pressable>
             </View>
           </View>
 
@@ -195,6 +205,39 @@ export function TaskCard({
   );
 }
 
+function SwipeableTaskCard({
+  task,
+  onCheck,
+  onDelete,
+}: {
+  task: Task;
+  onCheck: () => void;
+  onDelete: () => void;
+}) {
+  const swipeableRef = useRef<Swipeable>(null);
+
+  const requestDeletion = () => {
+    swipeableRef.current?.close();
+    onDelete();
+  };
+
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      overshootRight={false}
+      rightThreshold={40}
+      renderRightActions={() => (
+        <Pressable style={styles.swipeDeleteAction} onPress={requestDeletion}>
+          <Trash2 size={19} color={Colors.papel} />
+          <Text style={styles.swipeDeleteText}>EXCLUIR</Text>
+        </Pressable>
+      )}
+    >
+      <TaskCard task={task} onCheck={onCheck} />
+    </Swipeable>
+  );
+}
+
 function StatusBadge({ status }: { status: Status }) {
   const map: Record<Status, { label: string; color: string; bg: string }> = {
     in_progress: { label: '● em foco', color: Colors.papel, bg: Colors.tinta },
@@ -209,32 +252,32 @@ function StatusBadge({ status }: { status: Status }) {
   );
 }
 
-export default function Index() {
-
-  const { user, signOut } = useAuth();
-  const userId = user?.id ?? '';
-
-
-  const handleLogout = async () => {
-    Alert.alert(
-      'Sair',
-      'Tem certeza?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          // O Stack.Protected leva para o login quando o usuário sai
-          onPress: signOut,
-        },
-      ]
-    );
+function filterTasks(tasks: Task[], statusFilter: StatusFilter, priorityFilter: PriorityFilter) {
+  const priorityFilterMap: Record<Priority, PriorityFilter> = {
+    Alta: 'high',
+    Média: 'medium',
+    Baixa: 'low',
   };
 
+  return tasks.filter((task) => {
+    const matchesStatus = statusFilter === 'all' || task.status !== 'done';
+    const matchesPriority = priorityFilter === 'all' || priorityFilterMap[task.priority] === priorityFilter;
+    return matchesStatus && matchesPriority;
+  });
+}
+
+export default function Index() {
+  const { user } = useAuth();
+  const userId = user?.id ?? '';
   const [todayTasks, setTodayTasks] = useState<Task[]>([]);
   const [tomorrowTasks, setTomorrowTasks] = useState<Task[]>([]);
-
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
+  const [openFilter, setOpenFilter] = useState<FilterMenu>(null);
+  const [completedTask, setCompletedTask] = useState<Task | null>(null);
+  const [taskPendingDeletion, setTaskPendingDeletion] = useState<Task | null>(null);
+  const completedToastOpacity = useRef(new Animated.Value(0)).current;
+  const deleteConfirmationOpacity = useRef(new Animated.Value(0)).current;
 
   const todayLabel = new Date()
     .toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
@@ -249,88 +292,214 @@ export default function Index() {
     }, [userId])
   );
 
+  useEffect(() => {
+    if (!completedTask) return;
+
+    completedToastOpacity.setValue(0);
+    const animation = Animated.sequence([
+      Animated.timing(completedToastOpacity, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.delay(2800),
+      Animated.timing(completedToastOpacity, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    animation.start(({ finished }) => {
+      if (finished) setCompletedTask(null);
+    });
+
+    return () => animation.stop();
+  }, [completedTask, completedToastOpacity]);
+
+  useEffect(() => {
+    if (!taskPendingDeletion) return;
+
+    deleteConfirmationOpacity.setValue(0);
+    const animation = Animated.timing(deleteConfirmationOpacity, {
+      toValue: 1,
+      duration: 160,
+      useNativeDriver: true,
+    });
+    animation.start();
+
+    return () => animation.stop();
+  }, [deleteConfirmationOpacity, taskPendingDeletion]);
+
   const completed = todayTasks.filter(t => t.status === 'done').length;
   const totalMins = todayTasks.reduce((acc, t) => acc + t.minutes, 0);
   const h = Math.floor(totalMins / 60);
   const m = totalMins % 60;
   const focusLabel = h > 0 ? `${h}h ${m}min de foco` : `${m}min de foco`;
+  const progress = todayTasks.length > 0 ? (completed / todayTasks.length) * 100 : 0;
+  const filteredTodayTasks = filterTasks(todayTasks, statusFilter, priorityFilter);
+  const filteredTomorrowTasks = filterTasks(tomorrowTasks, statusFilter, priorityFilter);
+
+  const refreshFromDatabase = () => {
+    const all = getAllTasks(userId);
+    const { today, tomorrow } = splitByDate(all);
+    setTodayTasks(today);
+    setTomorrowTasks(tomorrow);
+  };
+
+  const deleteTaskNow = (task: Task) => {
+    deleteTask(task.id);
+    refreshFromDatabase();
+  };
+
+  const dismissDeletion = (shouldDelete: boolean) => {
+    const task = taskPendingDeletion;
+    if (!task) return;
+
+    Animated.timing(deleteConfirmationOpacity, {
+      toValue: 0,
+      duration: 140,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished) return;
+      setTaskPendingDeletion(null);
+      if (shouldDelete) deleteTaskNow(task);
+    });
+  };
+
+  const handleCheck = (task: Task) => {
+    const nextStatus: Status = task.status === 'done' ? 'pending' : 'done';
+
+    if (nextStatus === 'done') completeTask(task.id);
+    else reopenTask(task.id);
+
+    const updateTask = (tasks: Task[]) => tasks.map((item) => (
+      item.id === task.id
+        ? { ...item, status: nextStatus, donePips: nextStatus === 'done' ? item.totalPips : 0 }
+        : item
+    ));
+    setTodayTasks(updateTask);
+    setTomorrowTasks(updateTask);
+
+    if (nextStatus === 'done') setCompletedTask(task);
+  };
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <View>
-          <Text style={[styles.headerTitle, { fontFamily: Fonts.barlowBold }]}>
-            TAREFAS DE HOJE
-          </Text>
-          <Text style={[styles.headerDate, { fontFamily: Fonts.mono }]}>{todayLabel}</Text>
+        <View style={styles.headerTopRow}>
+          <View>
+            <Text style={[styles.headerTitle, { fontFamily: Fonts.barlowBold }]}>TAREFAS DE HOJE</Text>
+            <Text style={[styles.headerDate, { fontFamily: Fonts.mono }]}>{todayLabel}</Text>
+          </View>
+          <Pressable style={styles.plusButton} onPress={() => router.push('/nova-tarefa')}>
+            <Text style={[styles.plusText, { fontFamily: Fonts.barlowBold }]}>+</Text>
+          </Pressable>
         </View>
-        <View style={{ flex: 1 }} />
-        <Pressable style={styles.plusButton} onPress={() => router.push('/nova-tarefa')}>
-          <Text style={[styles.plusText, { fontFamily: Fonts.barlowBold }]}>+</Text>
-        </Pressable>
+        {/* TODO: conectar este menu ao fluxo de priorização com IA e à Matriz de Eisenhower. */}
+        <View style={styles.eisenhowerMenu}>
+          <Text style={styles.eisenhowerTitle}>Priorizar com IA</Text>
+          <Text style={styles.eisenhowerMeta}>MATRIZ DE EISENHOWER →</Text>
+        </View>
       </View>
 
       <View style={styles.summary}>
         <Text style={[styles.summaryText, { fontFamily: Fonts.mono }]}>
           {completed} DE {todayTasks.length} TAREFAS{'  '}·{'  '}{focusLabel.toUpperCase()}
         </Text>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${progress}%` }]} />
+        </View>
       </View>
 
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-        <Text style={[styles.sectionLabel, { fontFamily: Fonts.mono }]}>HOJE</Text>
-        {todayTasks.length === 0 && (
-          <Text style={[styles.emptyText, { fontFamily: Fonts.mono }]}>
-            Nenhuma tarefa. Adicione uma.
-          </Text>
+        <View style={styles.filters}>
+          <View style={styles.filterRow}>
+            <Pressable style={styles.filterButton} onPress={() => setOpenFilter(openFilter === 'status' ? null : 'status')}>
+              <Text style={styles.filterText}>status: {STATUS_FILTER_LABELS[statusFilter].toLowerCase()}</Text>
+              <Text style={styles.filterChevron}>⌄</Text>
+            </Pressable>
+            <Pressable style={styles.filterButton} onPress={() => setOpenFilter(openFilter === 'priority' ? null : 'priority')}>
+              <Text style={styles.filterText}>prioridade: {PRIORITY_FILTER_LABELS[priorityFilter].toLowerCase()}</Text>
+              <Text style={styles.filterChevron}>⌄</Text>
+            </Pressable>
+          </View>
+          {openFilter === 'status' && (
+            <View style={styles.filterMenu}>
+              {(Object.keys(STATUS_FILTER_LABELS) as StatusFilter[]).map((option) => (
+                <Pressable key={option} style={styles.filterOption} onPress={() => { setStatusFilter(option); setOpenFilter(null); }}>
+                  <Text style={styles.filterOptionText}>{STATUS_FILTER_LABELS[option]}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          {openFilter === 'priority' && (
+            <View style={styles.filterMenu}>
+              {(Object.keys(PRIORITY_FILTER_LABELS) as PriorityFilter[]).map((option) => (
+                <Pressable key={option} style={styles.filterOption} onPress={() => { setPriorityFilter(option); setOpenFilter(null); }}>
+                  <Text style={styles.filterOptionText}>{PRIORITY_FILTER_LABELS[option]}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {todayTasks.length === 0 && tomorrowTasks.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIcon}><Text style={styles.emptyIconText}>☰</Text></View>
+            <Text style={styles.emptyTitle}>NENHUMA TAREFA</Text>
+            <Text style={styles.emptyDescription}>ADICIONE UMA PARA{`\n`}COMEÇAR O DIA.</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>HOJE</Text>
+              <Text style={styles.sectionMeta}>{todayTasks.length} TAREFAS</Text>
+            </View>
+            {filteredTodayTasks.length === 0 ? (
+              <Text style={styles.emptyText}>NENHUMA TAREFA COM ESTES FILTROS.</Text>
+            ) : filteredTodayTasks.map((task) => (
+              <SwipeableTaskCard key={task.id} task={task} onDelete={() => setTaskPendingDeletion(task)} onCheck={() => handleCheck(task)} />
+            ))}
+
+            {tomorrowTasks.length > 0 && (
+              <>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>AMANHÃ</Text>
+                  <Text style={styles.sectionMeta}>{tomorrowTasks.length} TAREFAS</Text>
+                </View>
+                {filteredTomorrowTasks.length === 0 ? (
+                  <Text style={styles.emptyText}>NENHUMA TAREFA COM ESTES FILTROS.</Text>
+                ) : filteredTomorrowTasks.map((task) => (
+                  <SwipeableTaskCard key={task.id} task={task} onDelete={() => setTaskPendingDeletion(task)} onCheck={() => handleCheck(task)} />
+                ))}
+              </>
+            )}
+          </>
         )}
-        {todayTasks.map(task => 
-          <TaskCard
-            key={task.id}
-            task={task} 
-            selected={selectedTask?.id === task.id} 
-            onDelete={() => {
-              deleteTask(task.id);
-
-              const all = getAllTasks(userId);
-              const { today, tomorrow } = splitByDate(all);
-
-              setTodayTasks(today);
-              setTomorrowTasks(tomorrow);
-            }}
-            onCheck={() => {
-              if (task.status === 'done') {
-                reopenTask(task.id);
-
-                setTodayTasks(prev =>
-                  prev.map(t =>
-                    t.id === task.id
-                      ? { ...t, status: 'pending' }
-                      : t
-                  )
-                );
-              } else {
-                completeTask(task.id);
-
-                setTodayTasks(prev =>
-                  prev.map(t =>
-                    t.id === task.id
-                      ? { ...t, status: 'done' }
-                      : t
-                  )
-                );
-              }
-            }}
-          />
-        )}
-
-        <Text style={[styles.sectionLabel, { fontFamily: Fonts.mono }]}>AMANHÃ</Text>
-        {tomorrowTasks.length === 0 && (
-          <Text style={[styles.emptyText, { fontFamily: Fonts.mono }]}>
-            Nenhuma tarefa. Adicione uma.
-          </Text>
-        )}
-        {tomorrowTasks.map(task => <TaskCard task={task} onCheck={() => completeTask(task.id)} />)}
       </ScrollView>
+      {completedTask && (
+        <Animated.View style={[styles.completedToast, { opacity: completedToastOpacity }]}>
+          <Text style={styles.completedToastTitle}>✓  TAREFA CONCLUÍDA</Text>
+          <Text style={styles.completedToastMessage}>{completedTask.displayId} · {completedTask.title}</Text>
+        </Animated.View>
+      )}
+      {taskPendingDeletion && (
+        <Animated.View style={[styles.deleteOverlay, { opacity: deleteConfirmationOpacity }]}>
+          <View style={styles.deleteDialog}>
+            <Text style={styles.deleteDialogTitle}>EXCLUIR TAREFA?</Text>
+            <Text style={styles.deleteDialogMessage} numberOfLines={2}>{taskPendingDeletion.title}</Text>
+            <View style={styles.deleteDialogActions}>
+              <Pressable style={styles.cancelDeleteButton} onPress={() => dismissDeletion(false)}>
+                <Text style={styles.cancelDeleteText}>CANCELAR</Text>
+              </Pressable>
+              <Pressable style={styles.confirmDeleteButton} onPress={() => dismissDeletion(true)}>
+                <Text style={styles.confirmDeleteText}>EXCLUIR</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -341,12 +510,15 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.papel,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingTop: Spacing.sp12,
     paddingBottom: Spacing.sp5,
     paddingHorizontal: Spacing.sp5,
     backgroundColor: Colors.tinta,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerTitle: {
     fontSize: FontSize.headingXl,
@@ -369,9 +541,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   plusText: {
+    textAlign: 'center',
     fontSize: 24,
     color: Colors.papel,
-    lineHeight: 28,
+    lineHeight: 26,
+    transform: [{ translateY: -2 }],
+  },
+  eisenhowerMenu: {
+    minHeight: 44,
+    marginTop: Spacing.sp4,
+    paddingHorizontal: Spacing.sp3,
+    borderWidth: 1,
+    borderColor: '#403F3B',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  eisenhowerTitle: {
+    fontFamily: Fonts.barlowSemiBold,
+    fontSize: FontSize.taskTitle,
+    color: Colors.papel,
+  },
+  eisenhowerMeta: {
+    fontFamily: Fonts.mono,
+    fontSize: FontSize.taskId,
+    color: Colors.cinza,
+    letterSpacing: 0.25,
   },
   summary: {
     paddingHorizontal: Spacing.sp5,
@@ -385,12 +580,89 @@ const styles = StyleSheet.create({
     color: Colors.grafite,
     letterSpacing: 0.3,
   },
+  progressTrack: {
+    height: 3,
+    marginTop: Spacing.sp2,
+    backgroundColor: Colors.papel3,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: Colors.vermelho,
+  },
   list: {
     flex: 1,
   },
   listContent: {
     paddingHorizontal: Spacing.sp4,
     paddingBottom: Spacing.sp6,
+  },
+  filters: {
+    marginTop: Spacing.sp4,
+    marginBottom: Spacing.sp4,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: Spacing.sp2,
+  },
+  filterButton: {
+    flex: 1,
+    minHeight: 36,
+    paddingHorizontal: Spacing.sp3,
+    borderWidth: 1,
+    borderColor: Colors.papel3,
+    backgroundColor: Colors.papel2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  filterText: {
+    fontFamily: Fonts.mono,
+    fontSize: FontSize.taskId,
+    color: Colors.grafite,
+  },
+  filterChevron: {
+    fontFamily: Fonts.mono,
+    fontSize: FontSize.taskId,
+    color: Colors.grafite
+  },
+  filterMenu: {
+    marginTop: Spacing.sp2,
+    borderWidth: 1,
+    borderColor: Colors.papel3,
+    backgroundColor: Colors.papel2,
+  },
+  filterOption: {
+    minHeight: 38,
+    paddingHorizontal: Spacing.sp3,
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.papel3,
+  },
+  filterOptionText: {
+    fontFamily: Fonts.mono,
+    fontSize: FontSize.taskId,
+    color: Colors.grafite,
+  },
+  sectionHeader: {
+    marginTop: Spacing.sp4,
+    marginBottom: Spacing.sp3,
+    paddingBottom: Spacing.sp2,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.papel3,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+  },
+  sectionTitle: {
+    fontFamily: Fonts.barlowBold,
+    fontSize: FontSize.taskTitle,
+    color: Colors.tinta,
+    letterSpacing: 0.4,
+  },
+  sectionMeta: {
+    fontFamily: Fonts.mono,
+    fontSize: FontSize.caption,
+    color: Colors.cinza,
   },
   sectionLabel: {
     fontSize: FontSize.label,
@@ -403,6 +675,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 0,
     marginBottom: Spacing.sp5,
+  },
+  swipeDeleteAction: {
+    width: 104,
+    marginBottom: Spacing.sp5,
+    backgroundColor: Colors.vermelho,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sp1,
+  },
+  swipeDeleteText: {
+    fontFamily: Fonts.mono,
+    fontSize: FontSize.caption,
+    color: Colors.papel,
+    letterSpacing: 0.3,
   },
   cardLeftBorder: {
     width: 2,
@@ -504,21 +790,130 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
   },
   emptyText: {
+    fontFamily: Fonts.mono,
     fontSize: FontSize.caption,
     color: Colors.cinza,
     marginTop: Spacing.sp2,
   },
-    headerActions: {
+  emptyState: {
+    alignItems: 'center',
+    paddingTop: Spacing.sp12,
+    paddingBottom: Spacing.sp8,
+  },
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    marginBottom: Spacing.sp4,
+    borderWidth: 1,
+    borderColor: Colors.grafite,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyIconText: {
+    fontFamily: Fonts.mono,
+    fontSize: 22,
+    color: Colors.grafite,
+  },
+  emptyTitle: {
+    fontFamily: Fonts.barlowBold,
+    fontSize: FontSize.caption,
+    color: Colors.tinta,
+    letterSpacing: 0.5,
+  },
+  emptyDescription: {
+    marginTop: Spacing.sp2,
+    fontFamily: Fonts.mono,
+    fontSize: FontSize.label,
+    color: Colors.cinza,
+    textAlign: 'center',
+    lineHeight: 18,
+    letterSpacing: 0.4,
+  },
+  completedToast: {
+    position: 'absolute',
+    right: Spacing.sp4,
+    bottom: 88,
+    left: Spacing.sp4,
+    padding: Spacing.sp4,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.vermelho,
+    backgroundColor: Colors.tinta,
+  },
+  completedToastTitle: {
+    fontFamily: Fonts.barlowBold,
+    fontSize: FontSize.caption,
+    color: Colors.papel,
+    letterSpacing: 0.4,
+  },
+  completedToastMessage: {
+    marginTop: Spacing.sp1,
+    fontFamily: Fonts.mono,
+    fontSize: FontSize.label,
+    color: Colors.grafite,
+  },
+  deleteOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    padding: Spacing.sp5,
+    backgroundColor: 'rgba(14,14,15,0.38)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteDialog: {
+    width: '100%',
+    maxWidth: 340,
+    padding: Spacing.sp5,
+    backgroundColor: Colors.papel,
+    borderTopWidth: 3,
+    borderTopColor: Colors.vermelho,
+  },
+  deleteDialogTitle: {
+    fontFamily: Fonts.barlowBold,
+    fontSize: FontSize.headingLg,
+    color: Colors.tinta,
+    letterSpacing: 0.5,
+  },
+  deleteDialogMessage: {
+    marginTop: Spacing.sp2,
+    fontFamily: Fonts.mono,
+    fontSize: FontSize.caption,
+    color: Colors.grafite,
+  },
+  deleteDialogActions: {
+    flexDirection: 'row',
+    gap: Spacing.sp2,
+    marginTop: Spacing.sp5,
+  },
+  cancelDeleteButton: {
+    flex: 1,
+    minHeight: 40,
+    borderWidth: 1,
+    borderColor: Colors.tinta,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmDeleteButton: {
+    flex: 1,
+    minHeight: 40,
+    backgroundColor: Colors.vermelho,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelDeleteText: {
+    fontFamily: Fonts.mono,
+    fontSize: FontSize.caption,
+    color: Colors.tinta,
+    letterSpacing: 0.2,
+  },
+  confirmDeleteText: {
+    fontFamily: Fonts.mono,
+    fontSize: FontSize.caption,
+    color: Colors.papel,
+    letterSpacing: 0.2,
+  },
+  headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
 
-  deleteButton: {
-    padding: 4,
-  },
-
-  deleteIcon: {
-    fontSize: 16,
-  },
 });
