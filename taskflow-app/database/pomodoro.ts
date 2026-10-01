@@ -62,3 +62,53 @@ export function countPomodorosConcluidos(task_id: number): number {
 
     return resultado?.total ?? 0;
 }
+
+export function recordCompletedPomodoro(input: {
+    task_id: number;
+    user_id: string;
+    duration_seconds: number;
+}): { completedPomodoros: number; taskCompleted: boolean } {
+    const task = db.getFirstSync<{
+        estimated_pomodoros: number | null;
+        completed_pomodoros: number | null;
+    }>(
+        'SELECT estimated_pomodoros, completed_pomodoros FROM tasks WHERE id = ?',
+        [input.task_id]
+    );
+
+    const estimatedPomodoros = Math.max(1, task?.estimated_pomodoros ?? 1);
+    const completedPomodoros = (task?.completed_pomodoros ?? 0) + 1;
+    const taskCompleted = completedPomodoros >= estimatedPomodoros;
+
+    db.runSync(
+        `INSERT INTO pomodoro_sessions (
+            task_id,
+            user_id,
+            started_at,
+            ended_at,
+            duration_seconds,
+            type,
+            status,
+            sync_status
+        ) VALUES (?, ?, datetime('now'), datetime('now'), ?, 'focus', 'completed', 'pending')`,
+        [input.task_id, input.user_id, input.duration_seconds]
+    );
+
+    db.runSync(
+        `UPDATE tasks
+         SET completed_pomodoros = ?,
+             status = ?,
+             completed_at = ?,
+             updated_at = datetime('now'),
+             sync_status = 'pending'
+         WHERE id = ?`,
+        [
+            completedPomodoros,
+            taskCompleted ? 'done' : 'in_progress',
+            taskCompleted ? new Date().toISOString() : null,
+            input.task_id,
+        ]
+    );
+
+    return { completedPomodoros, taskCompleted };
+}
