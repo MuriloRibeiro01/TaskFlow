@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import { Colors, FontSize, Fonts, Spacing } from '@/theme';
 import { completeTask, deleteTask, getAllTasks, reopenTask } from '@/database/tasks';
 import { Task as DBTask } from '@/types/task.types';
