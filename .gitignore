@@ -25,3 +25,6 @@ android/
 ios/
 # Arquivos de trava do Office
 ~$*
+
+# Maestri (agentes internos — nunca commitar)
+.maestri/

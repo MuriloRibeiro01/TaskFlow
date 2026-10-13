@@ -8,6 +8,7 @@ import { Task as DBTask } from '@/types/task.types';
 import { Trash2 } from 'lucide-react-native';
 import { useAuth } from '@/database/context/auth_context';
 import { Swipeable } from 'react-native-gesture-handler';
+import { QUADRANT_META, Quadrant } from '@/types/prioritization.types';
 
 type Priority = 'Alta' | 'Média' | 'Baixa';
 type Status = 'in_progress' | 'pending' | 'done';
@@ -24,6 +25,7 @@ export interface Task {
   minutes: number;
   totalPips: number;
   donePips: number;
+  quadrant?: Quadrant | null;
 }
 
 const STATUS_FILTER_LABELS: Record<StatusFilter, string> = {
@@ -51,6 +53,7 @@ export function dbTaskToView(t: DBTask): Task {
     minutes: estimated * 25,
     totalPips: estimated,
     donePips: completed,
+    quadrant: (t.quadrant as Quadrant) ?? null,
   };
 }
 
@@ -197,6 +200,11 @@ export function TaskCard({
             )}
             {task.minutes > 0 && (
               <Text style={[styles.timeText, { fontFamily: Fonts.mono }]}>{task.minutes} min</Text>
+            )}
+            {task.quadrant && (
+              <Text style={[styles.quadrantText, { fontFamily: Fonts.mono }]}>
+                · {QUADRANT_META[task.quadrant as Quadrant].label.toUpperCase()}
+              </Text>
             )}
           </View>
         </View>
@@ -396,11 +404,10 @@ export default function Index() {
             <Text style={[styles.plusText, { fontFamily: Fonts.barlowBold }]}>+</Text>
           </Pressable>
         </View>
-        {/* TODO: conectar este menu ao fluxo de priorização com IA e à Matriz de Eisenhower. */}
-        <View style={styles.eisenhowerMenu}>
+        <Pressable style={styles.eisenhowerMenu} onPress={() => router.push('/priorizar')}>
           <Text style={styles.eisenhowerTitle}>Priorizar com IA</Text>
           <Text style={styles.eisenhowerMeta}>MATRIZ DE EISENHOWER →</Text>
-        </View>
+        </Pressable>
       </View>
 
       <View style={styles.summary}>
@@ -789,6 +796,10 @@ const styles = StyleSheet.create({
     color: Colors.cinza,
     marginLeft: 'auto',
   },
+  quadrantText: {
+    fontSize: FontSize.label,
+    color: Colors.cinza,
+  },
   emptyText: {
     fontFamily: Fonts.mono,
     fontSize: FontSize.caption,
@@ -852,7 +863,7 @@ const styles = StyleSheet.create({
     color: Colors.grafite,
   },
   deleteOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     padding: Spacing.sp5,
     backgroundColor: 'rgba(14,14,15,0.38)',
     alignItems: 'center',
