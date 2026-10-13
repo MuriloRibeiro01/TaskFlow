@@ -29,6 +29,9 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="nova-tarefa" />
       <Stack.Screen name="auth/callback" />
+      <Stack.Screen name="historico" />
+      <Stack.Screen name="estatisticas" />
+      <Stack.Screen name="priorizar" />
     </Stack>
   );
 }

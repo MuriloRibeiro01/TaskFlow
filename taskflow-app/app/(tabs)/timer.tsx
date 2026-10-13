@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import { Colors, FontSize, Fonts, Spacing } from '@/theme';
 import { getAllTasks } from '@/database/tasks';
 import { recordCompletedPomodoro } from '@/database/pomodoro';
