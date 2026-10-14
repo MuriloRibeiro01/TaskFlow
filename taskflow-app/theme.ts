@@ -1,4 +1,4 @@
-export const Colors = {
+export const LightColors = {
   tinta: '#0E0E0F',
   vermelho: '#D63B2F',
   papel: '#F5F2EB',
@@ -6,7 +6,30 @@ export const Colors = {
   papel3: '#E4E0D6',
   grafite: '#5A5850',
   cinza: '#9A978E',
+  textoClaro: '#F5F2EB',
 } as const;
+
+export const DarkColors = {
+  tinta: '#111110',
+  vermelho: '#D63B2F',
+  papel: '#1C1C1E',
+  papel2: '#2C2C2E',
+  papel3: '#3A3A3C',
+  grafite: '#9A978E',
+  cinza: '#636366',
+  textoClaro: '#F5F2EB',
+} as const;
+
+export const ThemeColors = {
+  light: LightColors,
+  dark: DarkColors,
+} as const;
+
+export const Colors = LightColors;
+
+export type ColorTheme = {
+  readonly [K in keyof typeof LightColors]: string;
+};
 
 export const Spacing = {
   sp1: 4,
@@ -37,4 +60,5 @@ export const Fonts = {
   barlowSemiBold: 'BarlowCondensed_600SemiBold',
   barlowBlackItalic: 'BarlowCondensed_900Black_Italic',
   mono: 'IBMPlexMono_400Regular',
+  dmSans: 'DMSans_400Regular',
 } as const;
