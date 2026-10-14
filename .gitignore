@@ -23,3 +23,8 @@ Thumbs.db
 # Build outputs
 android/
 ios/
+# Arquivos de trava do Office
+~$*
+
+# Maestri (agentes internos — nunca commitar)
+.maestri/

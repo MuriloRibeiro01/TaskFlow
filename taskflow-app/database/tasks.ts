@@ -12,10 +12,11 @@ export function createTask(input: {
     priority: string;
     estimated_pomodoros?: number;
     due_date?: string;
+    user_id: string;
 }): Task {
     const resultado = db.runSync(
-        'INSERT INTO tasks (title, description, priority, estimated_pomodoros, due_date) VALUES (?, ?, ?, ?, ?)',
-        [input.title, input.description, input.priority, input.estimated_pomodoros ?? null, input.due_date ?? null]
+        'INSERT INTO tasks (title, description, priority, estimated_pomodoros, due_date, user_id, sync_status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [input.title, input.description, input.priority, input.estimated_pomodoros ?? null, input.due_date ?? null, input.user_id, 'pending']
     );
 
     const tarefa = db.getFirstSync<Task>(
@@ -33,24 +34,35 @@ export function deleteTask(id: number) {
 
 }
 
-export function editTask(id: number, input: { title: string; description: string; priority: string}) {
-    
+export function editTask(id: number, input: {
+  title: string;
+  description: string;
+  priority: string;
+  estimated_pomodoros?: number;
+  due_date?: string | null;
+}) {
     db.runSync(
-        'UPDATE tasks SET title = ?, description = ?, priority = ? WHERE id = ?',
-        [input.title, input.description, input.priority, id]
+        'UPDATE tasks SET title = ?, description = ?, priority = ?, estimated_pomodoros = ?, due_date = ? WHERE id = ?',
+        [input.title, input.description, input.priority, input.estimated_pomodoros ?? null, input.due_date ?? null, id]
     )
-    
 }
 
 export function completeTask(id: number) {
+
+    const result = db.getFirstSync<{ count: number }>(
+        'SELECT COUNT(*) as count FROM pomodoro_sessions WHERE status = "completed" AND task_id = ?', [id]
+    )
+
+    const countPomodoro = result?.count ?? 0;
+
     db.runSync(
-        'UPDATE tasks SET status = ?, completed_at = datetime("now") WHERE id = ?', ['done', id]
+        'UPDATE tasks SET status = ?, completed_at = datetime("now"), completed_pomodoros = ? WHERE id = ?', ['done', countPomodoro, id]
     )
 }
 
-export function getAllTasks(): Task[] {
+export function getAllTasks(userId: string): Task[] {
     return db.getAllSync<Task>(
-        'SELECT * FROM tasks ORDER BY created_at DESC'
+        'SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC', [userId]
     );
 }
 
