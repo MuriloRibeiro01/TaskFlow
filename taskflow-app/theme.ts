@@ -56,6 +56,7 @@ export const FontSize = {
 } as const;
 
 export const Fonts = {
+  barlow: 'BarlowCondensed_600SemiBold',
   barlowBold: 'BarlowCondensed_700Bold',
   barlowSemiBold: 'BarlowCondensed_600SemiBold',
   barlowBlackItalic: 'BarlowCondensed_900Black_Italic',
