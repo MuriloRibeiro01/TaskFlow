@@ -10,7 +10,7 @@ import {
 import { useAuth } from '@/database/context/auth_context';
 
 const colors = {
-  ink: '#0E0E0F',
+  tinta: '#0E0E0F',
   red: '#D63B2F',
   paper: '#F5F2EC',
   paperMuted: '#EDE9E0',
@@ -41,12 +41,12 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.ink} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.tinta} />
       <View style={styles.screen}>
         <View style={styles.content}>
           <View>
             <Text accessibilityRole="header" style={styles.brand}>
-              <Text style={styles.brandInk}>TASK</Text>
+              <Text style={styles.brandTinta}>TASK</Text>
               <Text style={styles.brandRed}>FLOW</Text>
             </Text>
             <View style={styles.rule} />
@@ -92,7 +92,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.tinta,
   },
   screen: {
     flex: 1,
@@ -111,8 +111,8 @@ const styles = StyleSheet.create({
     lineHeight: 48,
     letterSpacing: -0.8,
   },
-  brandInk: {
-    color: colors.ink,
+  brandTinta: {
+    color: colors.tinta,
   },
   brandRed: {
     color: colors.red,
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   },
   tagline: {
     marginTop: 20,
-    color: colors.ink,
+    color: colors.tinta,
     fontFamily: 'BarlowCondensed_700Bold',
     fontSize: 21,
     lineHeight: 25,
@@ -148,14 +148,14 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     alignItems: 'center',
-    backgroundColor: colors.ink,
+    backgroundColor: colors.tinta,
     height: 58,
     justifyContent: 'center',
   },
   appleButton: {
     alignItems: 'center',
     backgroundColor: colors.paper,
-    borderColor: colors.ink,
+    borderColor: colors.tinta,
     borderWidth: 1,
     height: 58,
     justifyContent: 'center',
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   appleButtonText: {
-    color: colors.ink,
+    color: colors.tinta,
     fontFamily: 'BarlowCondensed_700Bold',
     fontSize: 19,
     lineHeight: 22,

@@ -2,7 +2,8 @@ import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
-import { Colors, FontSize, Fonts, Spacing } from '@/theme';
+import { ColorTheme, FontSize, Fonts, Spacing } from '@/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/database/context/auth_context';
 import { getAllTasks } from '@/database/tasks';
 import { Task } from '@/types/task.types';
@@ -22,6 +23,8 @@ function formatFocusTime(minutes: number): string {
 }
 
 export default function Perfil() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const { user, signOut } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
 
@@ -43,7 +46,6 @@ export default function Perfil() {
 
   const handleSignOut = async () => {
     await signOut();
-    router.replace('/login');
   };
 
   return (
@@ -121,142 +123,154 @@ export default function Perfil() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: Colors.papel,
-  },
-  header: {
-    backgroundColor: Colors.tinta,
-    paddingTop: Spacing.sp12,
-    paddingHorizontal: Spacing.sp5,
-    paddingBottom: Spacing.sp6,
-  },
-  avatarImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-  avatarPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.cinza,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    fontFamily: Fonts.barlowBold,
-    fontSize: 28,
-    color: Colors.papel,
-  },
-  name: {
-    fontFamily: Fonts.barlowBold,
-    fontSize: FontSize.headingLg,
-    color: Colors.papel,
-    marginTop: Spacing.sp3,
-    letterSpacing: 0.5,
-  },
-  email: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.label,
-    color: Colors.cinza,
-    marginTop: Spacing.sp1,
-    letterSpacing: 0.3,
-  },
-  body: {
-    flex: 1,
-  },
-  bodyContent: {
-    flexGrow: 1,
-  },
-  statsSection: {
-    paddingHorizontal: Spacing.sp5,
-    marginTop: Spacing.sp6,
-  },
-  sectionTitle: {
-    fontFamily: Fonts.barlowBold,
-    fontSize: FontSize.caption,
-    color: Colors.tinta,
-    letterSpacing: 0.5,
-    marginBottom: Spacing.sp4,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: Colors.papel3,
-    backgroundColor: Colors.papel2,
-  },
-  statColumn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Spacing.sp4,
-    paddingHorizontal: Spacing.sp2,
-  },
-  statColumnMiddle: {
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: Colors.papel3,
-  },
-  statValue: {
-    fontFamily: Fonts.barlowBold,
-    fontSize: FontSize.headingLg,
-    color: Colors.tinta,
-  },
-  statLabel: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.label,
-    color: Colors.cinza,
-    marginTop: Spacing.sp1,
-    letterSpacing: 0.3,
-    textAlign: 'center',
-  },
-  navSection: {
-    marginTop: Spacing.sp6,
-    paddingHorizontal: Spacing.sp5,
-    gap: Spacing.sp3,
-  },
-  navButton: {
-    minHeight: 48,
-    paddingHorizontal: Spacing.sp4,
-    borderWidth: 1,
-    borderColor: Colors.papel3,
-    backgroundColor: Colors.papel2,
-    justifyContent: 'center',
-    borderRadius: 0,
-  },
-  navButtonPressed: {
-    backgroundColor: Colors.papel3,
-  },
-  navButtonText: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.caption,
-    color: Colors.grafite,
-    letterSpacing: 0.5,
-  },
-  logoutContainer: {
-    marginTop: 'auto',
-    paddingHorizontal: Spacing.sp5,
-    paddingTop: Spacing.sp8,
-    paddingBottom: Spacing.sp8,
-  },
-  logoutButton: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: Colors.vermelho,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 0,
-  },
-  logoutButtonPressed: {
-    backgroundColor: 'rgba(214,59,47,0.08)',
-  },
-  logoutText: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.caption,
-    color: Colors.vermelho,
-    letterSpacing: 0.5,
-  },
-});
+function createStyles(colors: ColorTheme) {
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.papel,
+    },
+    header: {
+      backgroundColor: colors.tinta,
+      paddingTop: Spacing.sp12,
+      paddingHorizontal: Spacing.sp5,
+      paddingBottom: Spacing.sp6,
+    },
+    avatarImage: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+    },
+    avatarPlaceholder: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: colors.cinza,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarInitials: {
+      fontFamily: Fonts.barlowBold,
+      fontSize: 28,
+      color: colors.textoClaro,
+    },
+    name: {
+      fontFamily: Fonts.barlowBold,
+      fontSize: FontSize.headingLg,
+      color: colors.textoClaro,
+      marginTop: Spacing.sp3,
+      letterSpacing: 0.5,
+    },
+    email: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.label,
+      color: colors.cinza,
+      marginTop: Spacing.sp1,
+      letterSpacing: 0.3,
+    },
+    body: {
+      flex: 1,
+    },
+    bodyContent: {
+      flexGrow: 1,
+    },
+    statsSection: {
+      paddingHorizontal: Spacing.sp5,
+      marginTop: Spacing.sp6,
+    },
+    sectionTitle: {
+      fontFamily: Fonts.barlowBold,
+      fontSize: FontSize.caption,
+      color: colors.tinta,
+      letterSpacing: 0.5,
+      marginBottom: Spacing.sp4,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      borderWidth: 1,
+      borderColor: colors.papel3,
+      backgroundColor: colors.papel2,
+    },
+    statColumn: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: Spacing.sp4,
+      paddingHorizontal: Spacing.sp2,
+    },
+    statColumnMiddle: {
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: colors.papel3,
+    },
+    statValue: {
+      fontFamily: Fonts.barlowBold,
+      fontSize: FontSize.headingLg,
+      color: colors.tinta,
+    },
+    statLabel: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.label,
+      color: colors.cinza,
+      marginTop: Spacing.sp1,
+      letterSpacing: 0.3,
+      textAlign: 'center',
+    },
+    navSection: {
+      marginTop: Spacing.sp6,
+      paddingHorizontal: Spacing.sp5,
+      gap: Spacing.sp3,
+    },
+    navButton: {
+      minHeight: 48,
+      paddingHorizontal: Spacing.sp4,
+      borderWidth: 1,
+      borderColor: colors.papel3,
+      backgroundColor: colors.papel2,
+      justifyContent: 'center',
+      borderRadius: 0,
+    },
+    navButtonPressed: {
+      backgroundColor: colors.papel3,
+    },
+    navButtonText: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.caption,
+      color: colors.grafite,
+      letterSpacing: 0.5,
+    },
+    logoutContainer: {
+      marginTop: 'auto',
+      paddingHorizontal: Spacing.sp5,
+      paddingTop: Spacing.sp8,
+      paddingBottom: Spacing.sp8,
+    },
+    logoutButton: {
+      minHeight: 48,
+      borderWidth: 1,
+      borderColor: colors.vermelho,
+      backgroundColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 0,
+    },
+    logoutButtonPressed: {
+      backgroundColor: 'rgba(214,59,47,0.08)',
+    },
+    logoutText: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.caption,
+      color: colors.vermelho,
+      letterSpacing: 0.5,
+    },
+  });
+}
+
+let cachedStyles: ReturnType<typeof createStyles> | null = null;
+let cachedTheme: ColorTheme | null = null;
+
+function getStyles(colors: ColorTheme) {
+  if (cachedStyles && cachedTheme === colors) return cachedStyles;
+  cachedTheme = colors;
+  cachedStyles = createStyles(colors);
+  return cachedStyles;
+}
