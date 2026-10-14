@@ -1,11 +1,11 @@
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('taskflow.db');
+export const db = SQLite.openDatabaseSync('taskflow.db');
 
 export function initDatabase() {
     db.execSync(`
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id TEXT PRIMARY KEY,
             email TEXT,
             display_name TEXT,
             avatar_url TEXT,
@@ -16,16 +16,20 @@ export function initDatabase() {
     db.execSync(`
         CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
+            remote_id TEXT UNIQUE,
+            user_id TEXT,
+
             title TEXT NOT NULL,
-            description TEXT,
+            description TEXT,            
             priority TEXT CHECK(priority IN ('low', 'medium', 'high')),
             estimated_pomodoros INTEGER,
             completed_pomodoros INTEGER DEFAULT 0,
             status TEXT CHECK(status IN ('pending', 'in_progress', 'done')) DEFAULT 'pending',
+            
             due_date TEXT,
             completed_at DATETIME,
             sync_status TEXT CHECK(sync_status IN ('synced', 'pending', 'conflict')),
+            quadrant TEXT CHECK(quadrant IN ('fazer_agora','agendar','delegar','eliminar')),
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME,
             FOREIGN KEY (user_id) REFERENCES users(id)
@@ -38,20 +42,51 @@ export function initDatabase() {
     try {
         db.execSync(`ALTER TABLE tasks ADD COLUMN completed_pomodoros INTEGER DEFAULT 0`);
     } catch {}
+    try {
+        db.execSync(`ALTER TABLE tasks ADD COLUMN quadrant TEXT CHECK(quadrant IN ('fazer_agora','agendar','delegar','eliminar'))`);
+    } catch {
+        try {
+            db.execSync(`ALTER TABLE tasks ADD COLUMN quadrant TEXT`);
+        } catch {}
+    }
 
     db.execSync(`
         CREATE TABLE IF NOT EXISTS pomodoro_sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            remote_id TEXT UNIQUE,
             task_id INTEGER,
-            user_id INTEGER,
+            user_id TEXT,
+
             started_at DATETIME,
             ended_at DATETIME,
             duration_seconds INTEGER,
+
             type TEXT CHECK(type IN ('focus', 'short_break', 'long_break')),
             status TEXT CHECK (status IN ('completed', 'cancelled', 'interrupted')),
             sync_status TEXT CHECK(sync_status IN ('synced', 'pending', 'conflict')),
-            FOREIGN KEY (task_id) REFERENCES tasks(id),
-            FOREIGN KEY (user_id) REFERENCES users(id)
+            FOREIGN KEY (task_id) REFERENCES tasks(id)
+        );
+    `);
+
+    db.execSync(`
+        CREATE TABLE IF NOT EXISTS prioritization_sessions (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    TEXT NOT NULL,
+            status     TEXT CHECK(status IN ('in_progress','applied','discarded')) DEFAULT 'in_progress',
+            created_at TEXT DEFAULT (datetime('now')),
+            applied_at TEXT
+        );
+    `);
+
+    db.execSync(`
+        CREATE TABLE IF NOT EXISTS prioritization_decisions (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id         INTEGER NOT NULL REFERENCES prioritization_sessions(id),
+            task_id            INTEGER NOT NULL REFERENCES tasks(id),
+            suggested_quadrant TEXT,
+            chosen_quadrant    TEXT NOT NULL,
+            confidence         INTEGER,
+            created_at         TEXT DEFAULT (datetime('now'))
         );
     `);
 }
