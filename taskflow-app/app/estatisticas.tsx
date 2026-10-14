@@ -7,8 +7,41 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { useAuth } from '@/database/context/auth_context';
 import { getAllTasks } from '@/database/tasks';
 import { Task } from '@/types/task.types';
-
 const WEEKDAYS_PT = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+
+function SimpleBarChart({
+  data,
+  barColor,
+  labelColor,
+}: {
+  data: { label: string; value: number }[];
+  barColor: string;
+  labelColor: string;
+}) {
+  const max = Math.max(...data.map((d) => d.value), 1);
+  const BAR_AREA = 130;
+  return (
+    <View style={{ flex: 1, flexDirection: 'row', paddingHorizontal: 8, paddingVertical: 12 }}>
+      {data.map((d, i) => (
+        <View key={i} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end' }}>
+          <View style={{ height: BAR_AREA, justifyContent: 'flex-end' }}>
+            <View
+              style={{
+                width: 16,
+                height: Math.max((d.value / max) * BAR_AREA, d.value > 0 ? 3 : 0),
+                backgroundColor: barColor,
+                borderRadius: 2,
+              }}
+            />
+          </View>
+          <Text style={{ fontFamily: Fonts.mono, fontSize: 9, color: labelColor, marginTop: 6 }}>
+            {d.label}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 interface DayStat {
   label: string;
@@ -35,15 +68,6 @@ function getPast7Days(): { label: string; date: string }[] {
   return result;
 }
 
-function formatFocusLabel(minutes: number): string {
-  if (minutes === 0) return '0min';
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h > 0) {
-    return m > 0 ? `${h}h${m}m` : `${h}h`;
-  }
-  return `${m}min`;
-}
 
 export default function Estatisticas() {
   const { colors } = useTheme();
@@ -80,10 +104,6 @@ export default function Estatisticas() {
       focusMin,
     };
   });
-
-  // Cálculo das barras
-  const maxCount = Math.max(...tasksByDay.map((d) => d.count), 0);
-  const maxFocus = Math.max(...tasksByDay.map((d) => d.focusMin), 0);
 
   // Métricas de destaque
   let bestDay = tasksByDay[0];
@@ -151,32 +171,11 @@ export default function Estatisticas() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>TAREFAS CONCLUÍDAS</Text>
           <View style={styles.chartCard}>
-            <View style={styles.chartRow}>
-              {tasksByDay.map((d) => {
-                const barHeight =
-                  maxCount > 0 && d.count > 0
-                    ? Math.max(4, Math.round((d.count / maxCount) * 80))
-                    : 4;
-
-                return (
-                  <View key={d.date} style={styles.chartColumn}>
-                    <Text style={styles.chartValueText}>{d.count}</Text>
-                    <View style={styles.barTrack}>
-                      <View
-                        style={[
-                          styles.bar,
-                          {
-                            height: barHeight,
-                            backgroundColor: colors.vermelho,
-                          },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.chartDayText}>{d.label}</Text>
-                  </View>
-                );
-              })}
-            </View>
+            <SimpleBarChart
+              data={tasksByDay.map((d) => ({ label: d.label, value: d.count }))}
+              barColor={colors.vermelho}
+              labelColor={colors.cinza}
+            />
           </View>
         </View>
 
@@ -184,38 +183,11 @@ export default function Estatisticas() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>TEMPO DE FOCO</Text>
           <View style={styles.chartCard}>
-            <View style={styles.chartRow}>
-              {tasksByDay.map((d) => {
-                const barHeight =
-                  maxFocus > 0 && d.focusMin > 0
-                    ? Math.max(4, Math.round((d.focusMin / maxFocus) * 80))
-                    : 4;
-
-                return (
-                  <View key={d.date} style={styles.chartColumn}>
-                    <Text
-                      style={styles.chartValueText}
-                      numberOfLines={1}
-                      adjustsFontSizeToFit
-                    >
-                      {formatFocusLabel(d.focusMin)}
-                    </Text>
-                    <View style={styles.barTrack}>
-                      <View
-                        style={[
-                          styles.bar,
-                          {
-                            height: barHeight,
-                            backgroundColor: colors.tinta,
-                          },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.chartDayText}>{d.label}</Text>
-                  </View>
-                );
-              })}
-            </View>
+            <SimpleBarChart
+              data={tasksByDay.map((d) => ({ label: d.label, value: d.focusMin }))}
+              barColor={colors.tinta}
+              labelColor={colors.cinza}
+            />
           </View>
         </View>
       </ScrollView>
@@ -308,46 +280,11 @@ function createStyles(colors: ColorTheme) {
       marginBottom: Spacing.sp3,
     },
     chartCard: {
+      height: 200,
       backgroundColor: colors.papel2,
       borderWidth: 1,
       borderColor: colors.papel3,
-      paddingVertical: Spacing.sp4,
-      paddingHorizontal: Spacing.sp2,
       borderRadius: 0,
-    },
-    chartRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-end',
-    },
-    chartColumn: {
-      flex: 1,
-      alignItems: 'center',
-    },
-    chartValueText: {
-      fontFamily: Fonts.mono,
-      fontSize: FontSize.taskId,
-      color: colors.cinza,
-      marginBottom: Spacing.sp2,
-      height: 14,
-      textAlign: 'center',
-    },
-    barTrack: {
-      height: 80,
-      width: '100%',
-      justifyContent: 'flex-end',
-      alignItems: 'center',
-    },
-    bar: {
-      width: 20,
-      borderRadius: 0,
-    },
-    chartDayText: {
-      fontFamily: Fonts.mono,
-      fontSize: FontSize.label,
-      color: colors.cinza,
-      marginTop: Spacing.sp2,
-      letterSpacing: 0.3,
     },
   });
 }

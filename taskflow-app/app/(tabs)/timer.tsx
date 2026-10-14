@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { Colors, FontSize, Fonts, Spacing } from '@/theme';
+import { ColorTheme, FontSize, Fonts, Spacing } from '@/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { getAllTasks } from '@/database/tasks';
 import { recordCompletedPomodoro } from '@/database/pomodoro';
 import { Task as DBTask } from '@/types/task.types';
@@ -56,10 +57,12 @@ function formatSessionDuration(pomodoros: number, focusSeconds = FOCUS_SECONDS) 
 }
 
 function PriorityBadge({ priority }: { priority: Priority }) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const priorityData: Record<Priority, { symbol: string; color: string; backgroundColor: string }> = {
-    Alta: { symbol: '▲', color: Colors.vermelho, backgroundColor: 'rgba(214,59,47,0.08)' },
-    Média: { symbol: '—', color: Colors.grafite, backgroundColor: Colors.papel3 },
-    Baixa: { symbol: '▽', color: Colors.cinza, backgroundColor: 'rgba(14,14,15,0.03)' },
+    Alta: { symbol: '▲', color: colors.vermelho, backgroundColor: 'rgba(214,59,47,0.08)' },
+    Média: { symbol: '—', color: colors.grafite, backgroundColor: colors.papel3 },
+    Baixa: { symbol: '▽', color: colors.cinza, backgroundColor: 'rgba(14,14,15,0.03)' },
   };
   const data = priorityData[priority];
   return (
@@ -84,6 +87,8 @@ function TaskSelectionCard({
   active?: boolean;
   completed?: boolean;
 }) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   return (
     <Pressable
       disabled={!onPress}
@@ -119,6 +124,8 @@ function TaskSelectionCard({
 }
 
 export default function Timer() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const { user } = useAuth();
   const [todayTasks, setTodayTasks] = useState<TimerTask[]>([]);
   const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
@@ -185,6 +192,7 @@ export default function Timer() {
     if (!isRunning || isFinished || remainingSeconds > 0) return;
 
     if (mode === 'break') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode('focus');
       setCycleTotalSeconds(setupFocusSeconds);
       setRemainingSeconds(setupFocusSeconds);
@@ -416,66 +424,78 @@ export default function Timer() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.papel },
-  header: { minHeight: 128, paddingTop: 60, paddingHorizontal: Spacing.sp5, paddingBottom: Spacing.sp5, backgroundColor: Colors.tinta, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-  headerTitle: { fontFamily: Fonts.barlowBold, fontSize: FontSize.headingLg, color: Colors.papel, letterSpacing: 0.5 },
-  headerStatus: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: Colors.cinza, letterSpacing: 1.8 },
-  headerStatusActive: { color: Colors.vermelho },
-  content: { padding: Spacing.sp5, paddingBottom: 112 },
-  timerHeading: { fontFamily: Fonts.barlowBold, fontSize: FontSize.headingMd, color: Colors.tinta, marginBottom: Spacing.sp5 },
-  timerBox: { width: 220, height: 220, alignSelf: 'center', paddingHorizontal: Spacing.sp3, borderWidth: 1, borderColor: Colors.tinta, alignItems: 'center', justifyContent: 'center' },
-  timerBoxActive: { borderColor: Colors.vermelho },
-  timerCorner: { position: 'absolute', width: 8, height: 8, backgroundColor: Colors.vermelho },
-  timerCornerTopLeft: { top: -4, left: -4 },
-  timerCornerTopRight: { top: -4, right: -4 },
-  timerCornerBottomLeft: { bottom: -4, left: -4 },
-  timerCornerBottomRight: { right: -4, bottom: -4 },
-  timerText: { fontFamily: Fonts.barlowBlackItalic, fontSize: 56, color: Colors.tinta, letterSpacing: -1 },
-  progressTrack: { width: '76%', height: 4, marginTop: Spacing.sp6, backgroundColor: Colors.papel3 },
-  progressFill: { height: '100%', backgroundColor: Colors.vermelho },
-  timerMode: { marginTop: Spacing.sp4, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: Colors.cinza, letterSpacing: 2 },
-  durationRow: { marginTop: Spacing.sp5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sp5 },
-  durationButton: { width: 42, height: 42, borderWidth: 1, borderColor: Colors.tinta, alignItems: 'center', justifyContent: 'center' },
-  durationButtonText: { fontFamily: Fonts.mono, fontSize: FontSize.body, color: Colors.tinta },
-  durationValue: { fontFamily: Fonts.mono, fontSize: FontSize.headingMd, color: Colors.tinta, letterSpacing: 1 },
-  intervalLabel: { marginTop: Spacing.sp3, textAlign: 'center', fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: Colors.cinza, letterSpacing: 0.7 },
-  timerControls: { marginTop: Spacing.sp6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sp1 },
-  primaryControl: { minWidth: 104, minHeight: 54, backgroundColor: Colors.tinta, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.sp3 },
-  primaryControlText: { fontFamily: Fonts.barlowSemiBold, fontSize: FontSize.headingMd, color: Colors.papel },
-  incrementControl: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 54 },
-  incrementControlText: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: Colors.vermelho, letterSpacing: 0.6 },
-  cancelControl: { minWidth: 84, minHeight: 54, borderWidth: 1, borderColor: Colors.papel3, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.sp2 },
-  cancelControlText: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: Colors.grafite, letterSpacing: 0.3 },
-  controlDisabled: { opacity: 0.35 },
-  cycleRow: { marginTop: Spacing.sp5, flexDirection: 'row', justifyContent: 'center', gap: Spacing.sp2, flexWrap: 'wrap' },
-  cycleDot: { width: 12, height: 12, borderWidth: 1, borderColor: Colors.papel3 },
-  cycleDotDone: { borderColor: Colors.vermelho, backgroundColor: Colors.vermelho },
-  cycleDotCurrent: { borderColor: Colors.tinta, backgroundColor: Colors.tinta },
-  sectionTitle: { marginTop: Spacing.sp10, marginBottom: Spacing.sp4, fontFamily: Fonts.barlowBold, fontSize: FontSize.headingMd, color: Colors.tinta },
-  taskCard: { minHeight: 116, marginBottom: Spacing.sp3, padding: Spacing.sp4, backgroundColor: Colors.papel2, flexDirection: 'row', gap: Spacing.sp3 },
-  taskCardSelected: { borderLeftWidth: 3, borderLeftColor: Colors.vermelho, backgroundColor: Colors.papel3 },
-  taskCardActive: { borderWidth: 1, borderColor: Colors.papel3, borderLeftWidth: 3, borderLeftColor: Colors.vermelho, backgroundColor: Colors.papel },
-  taskCardCompleted: { opacity: 0.55, borderLeftColor: Colors.tinta },
-  checkbox: { width: 24, height: 24, marginTop: 2, borderWidth: 1, borderColor: Colors.tinta, alignItems: 'center', justifyContent: 'center' },
-  checkboxSelected: { backgroundColor: Colors.tinta },
-  checkboxMark: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: Colors.papel },
-  taskContent: { flex: 1 },
-  taskTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  taskId: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: Colors.cinza, letterSpacing: 0.3 },
-  priorityBadge: { paddingVertical: 3, paddingHorizontal: Spacing.sp2 },
-  priorityText: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, letterSpacing: 0.2 },
-  taskTitle: { marginTop: Spacing.sp2, fontFamily: Fonts.barlowSemiBold, fontSize: FontSize.taskTitle, color: Colors.tinta },
-  taskBottomRow: { marginTop: Spacing.sp3, flexDirection: 'row', alignItems: 'center', gap: Spacing.sp2 },
-  focusBadge: { paddingVertical: 2, paddingHorizontal: Spacing.sp2, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: Colors.papel, backgroundColor: Colors.tinta, letterSpacing: 0.2 },
-  completedBadge: { paddingVertical: 2, paddingHorizontal: Spacing.sp2, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: Colors.papel, backgroundColor: Colors.tinta, letterSpacing: 0.2 },
-  taskMeta: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: Colors.cinza },
-  sessionSummary: { marginTop: Spacing.sp3, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: Colors.cinza, letterSpacing: 0.3 },
-  startButton: { minHeight: 56, marginTop: Spacing.sp4, backgroundColor: Colors.vermelho, alignItems: 'center', justifyContent: 'center' },
-  startButtonText: { fontFamily: Fonts.barlowSemiBold, fontSize: FontSize.headingMd, color: Colors.papel },
-  selectedTasksHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-  completedSectionTitle: { marginTop: Spacing.sp6, marginBottom: Spacing.sp4, fontFamily: Fonts.barlowBold, fontSize: FontSize.headingMd, color: Colors.tinta },
-  emptyState: { padding: Spacing.sp5, borderWidth: 1, borderColor: Colors.papel3, alignItems: 'center' },
-  emptyTitle: { fontFamily: Fonts.barlowSemiBold, fontSize: FontSize.body, color: Colors.cinza },
-  emptyDescription: { marginTop: Spacing.sp2, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: Colors.cinza, textAlign: 'center', lineHeight: 15 },
-});
+function createStyles(colors: ColorTheme) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: colors.papel },
+    header: { minHeight: 128, paddingTop: 60, paddingHorizontal: Spacing.sp5, paddingBottom: Spacing.sp5, backgroundColor: colors.tinta, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+    headerTitle: { fontFamily: Fonts.barlowBold, fontSize: FontSize.headingLg, color: colors.textoClaro, letterSpacing: 0.5 },
+    headerStatus: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.cinza, letterSpacing: 1.8 },
+    headerStatusActive: { color: colors.vermelho },
+    content: { padding: Spacing.sp5, paddingBottom: 112 },
+    timerHeading: { fontFamily: Fonts.barlowBold, fontSize: FontSize.headingMd, color: colors.tinta, marginBottom: Spacing.sp5 },
+    timerBox: { width: 220, height: 220, alignSelf: 'center', paddingHorizontal: Spacing.sp3, borderWidth: 1, borderColor: colors.tinta, alignItems: 'center', justifyContent: 'center' },
+    timerBoxActive: { borderColor: colors.vermelho },
+    timerCorner: { position: 'absolute', width: 8, height: 8, backgroundColor: colors.vermelho },
+    timerCornerTopLeft: { top: -4, left: -4 },
+    timerCornerTopRight: { top: -4, right: -4 },
+    timerCornerBottomLeft: { bottom: -4, left: -4 },
+    timerCornerBottomRight: { right: -4, bottom: -4 },
+    timerText: { fontFamily: Fonts.barlowBlackItalic, fontSize: 56, color: colors.tinta, letterSpacing: -1 },
+    progressTrack: { width: '76%', height: 4, marginTop: Spacing.sp6, backgroundColor: colors.papel3 },
+    progressFill: { height: '100%', backgroundColor: colors.vermelho },
+    timerMode: { marginTop: Spacing.sp4, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.cinza, letterSpacing: 2 },
+    durationRow: { marginTop: Spacing.sp5, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sp5 },
+    durationButton: { width: 42, height: 42, borderWidth: 1, borderColor: colors.tinta, alignItems: 'center', justifyContent: 'center' },
+    durationButtonText: { fontFamily: Fonts.mono, fontSize: FontSize.body, color: colors.tinta },
+    durationValue: { fontFamily: Fonts.mono, fontSize: FontSize.headingMd, color: colors.tinta, letterSpacing: 1 },
+    intervalLabel: { marginTop: Spacing.sp3, textAlign: 'center', fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.cinza, letterSpacing: 0.7 },
+    timerControls: { marginTop: Spacing.sp6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sp1 },
+    primaryControl: { minWidth: 104, minHeight: 54, backgroundColor: colors.tinta, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.sp3 },
+    primaryControlText: { fontFamily: Fonts.barlowSemiBold, fontSize: FontSize.headingMd, color: colors.textoClaro },
+    incrementControl: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 54 },
+    incrementControlText: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.vermelho, letterSpacing: 0.6 },
+    cancelControl: { minWidth: 84, minHeight: 54, borderWidth: 1, borderColor: colors.papel3, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.sp2 },
+    cancelControlText: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.grafite, letterSpacing: 0.3 },
+    controlDisabled: { opacity: 0.35 },
+    cycleRow: { marginTop: Spacing.sp5, flexDirection: 'row', justifyContent: 'center', gap: Spacing.sp2, flexWrap: 'wrap' },
+    cycleDot: { width: 12, height: 12, borderWidth: 1, borderColor: colors.papel3 },
+    cycleDotDone: { borderColor: colors.vermelho, backgroundColor: colors.vermelho },
+    cycleDotCurrent: { borderColor: colors.tinta, backgroundColor: colors.tinta },
+    sectionTitle: { marginTop: Spacing.sp10, marginBottom: Spacing.sp4, fontFamily: Fonts.barlowBold, fontSize: FontSize.headingMd, color: colors.tinta },
+    taskCard: { minHeight: 116, marginBottom: Spacing.sp3, padding: Spacing.sp4, backgroundColor: colors.papel2, flexDirection: 'row', gap: Spacing.sp3 },
+    taskCardSelected: { borderLeftWidth: 3, borderLeftColor: colors.vermelho, backgroundColor: colors.papel3 },
+    taskCardActive: { borderWidth: 1, borderColor: colors.papel3, borderLeftWidth: 3, borderLeftColor: colors.vermelho, backgroundColor: colors.papel },
+    taskCardCompleted: { opacity: 0.55, borderLeftColor: colors.tinta },
+    checkbox: { width: 24, height: 24, marginTop: 2, borderWidth: 1, borderColor: colors.tinta, alignItems: 'center', justifyContent: 'center' },
+    checkboxSelected: { backgroundColor: colors.tinta },
+    checkboxMark: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.textoClaro },
+    taskContent: { flex: 1 },
+    taskTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    taskId: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.cinza, letterSpacing: 0.3 },
+    priorityBadge: { paddingVertical: 3, paddingHorizontal: Spacing.sp2 },
+    priorityText: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, letterSpacing: 0.2 },
+    taskTitle: { marginTop: Spacing.sp2, fontFamily: Fonts.barlowSemiBold, fontSize: FontSize.taskTitle, color: colors.tinta },
+    taskBottomRow: { marginTop: Spacing.sp3, flexDirection: 'row', alignItems: 'center', gap: Spacing.sp2 },
+    focusBadge: { paddingVertical: 2, paddingHorizontal: Spacing.sp2, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.textoClaro, backgroundColor: colors.tinta, letterSpacing: 0.2 },
+    completedBadge: { paddingVertical: 2, paddingHorizontal: Spacing.sp2, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.textoClaro, backgroundColor: colors.tinta, letterSpacing: 0.2 },
+    taskMeta: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.cinza },
+    sessionSummary: { marginTop: Spacing.sp3, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.cinza, letterSpacing: 0.3 },
+    startButton: { minHeight: 56, marginTop: Spacing.sp4, backgroundColor: colors.vermelho, alignItems: 'center', justifyContent: 'center' },
+    startButtonText: { fontFamily: Fonts.barlowSemiBold, fontSize: FontSize.headingMd, color: colors.textoClaro },
+    selectedTasksHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+    completedSectionTitle: { marginTop: Spacing.sp6, marginBottom: Spacing.sp4, fontFamily: Fonts.barlowBold, fontSize: FontSize.headingMd, color: colors.tinta },
+    emptyState: { padding: Spacing.sp5, borderWidth: 1, borderColor: colors.papel3, alignItems: 'center' },
+    emptyTitle: { fontFamily: Fonts.barlowSemiBold, fontSize: FontSize.body, color: colors.cinza },
+    emptyDescription: { marginTop: Spacing.sp2, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.cinza, textAlign: 'center', lineHeight: 15 },
+  });
+}
+
+let cachedStyles: ReturnType<typeof createStyles> | null = null;
+let cachedTheme: ColorTheme | null = null;
+
+function getStyles(colors: ColorTheme) {
+  if (cachedStyles && cachedTheme === colors) return cachedStyles;
+  cachedTheme = colors;
+  cachedStyles = createStyles(colors);
+  return cachedStyles;
+}

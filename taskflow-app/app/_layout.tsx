@@ -13,6 +13,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from '@/database/context/auth_context';
 import { ToastProvider } from '@/components/notifications/Toast';
 
@@ -49,11 +50,13 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <RootLayoutNav />
-        <StatusBar style="light" />
-      </AuthProvider>
-    </ToastProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ToastProvider>
+        <AuthProvider>
+          <RootLayoutNav />
+          <StatusBar style="light" />
+        </AuthProvider>
+      </ToastProvider>
+    </GestureHandlerRootView>
   );
 }
