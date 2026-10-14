@@ -72,9 +72,27 @@ describe('EditTask', () => {
         editTask(1, input);
 
         expect(db.runSync).toHaveBeenCalledWith(
-            'UPDATE tasks SET title = ?, description = ?, priority = ? WHERE id = ?', ['Jogar', 'Jogar Resident Evil 9', 'low', 1]
+            'UPDATE tasks SET title = ?, description = ?, priority = ?, estimated_pomodoros = ?, due_date = ? WHERE id = ?',
+            ['Jogar', 'Jogar Resident Evil 9', 'low', null, null, 1]
         );
 
+    });
+
+    it('Editar tarefa com estimated_pomodoros e due_date', () => {
+        const input = {
+            title: 'Estudar',
+            description: 'Estudar TypeScript',
+            priority: 'medium',
+            estimated_pomodoros: 3,
+            due_date: '2026-10-15',
+        };
+
+        editTask(2, input);
+
+        expect(db.runSync).toHaveBeenCalledWith(
+            'UPDATE tasks SET title = ?, description = ?, priority = ?, estimated_pomodoros = ?, due_date = ? WHERE id = ?',
+            ['Estudar', 'Estudar TypeScript', 'medium', 3, '2026-10-15', 2]
+        );
     });
 });
 

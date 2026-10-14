@@ -223,10 +223,12 @@ function SwipeableTaskCard({
   task,
   onCheck,
   onDelete,
+  onPress,
 }: {
   task: Task;
   onCheck: () => void;
   onDelete: () => void;
+  onPress?: () => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -249,7 +251,7 @@ function SwipeableTaskCard({
         </Pressable>
       )}
     >
-      <TaskCard task={task} onCheck={onCheck} />
+      <TaskCard task={task} onCheck={onCheck} onPress={onPress} />
     </Swipeable>
   );
 }
@@ -454,7 +456,13 @@ export default function Index() {
             {filteredTodayTasks.length === 0 ? (
               <Text style={styles.emptyText}>NENHUMA TAREFA COM ESTES FILTROS.</Text>
             ) : filteredTodayTasks.map((task) => (
-              <SwipeableTaskCard key={task.id} task={task} onDelete={() => setTaskPendingDeletion(task)} onCheck={() => handleCheck(task)} />
+              <SwipeableTaskCard
+                key={task.id}
+                task={task}
+                onDelete={() => setTaskPendingDeletion(task)}
+                onCheck={() => handleCheck(task)}
+                onPress={() => router.push(`/nova-tarefa?id=${task.id}`)}
+              />
             ))}
 
             {tomorrowTasks.length > 0 && (
@@ -466,7 +474,13 @@ export default function Index() {
                 {filteredTomorrowTasks.length === 0 ? (
                   <Text style={styles.emptyText}>NENHUMA TAREFA COM ESTES FILTROS.</Text>
                 ) : filteredTomorrowTasks.map((task) => (
-                  <SwipeableTaskCard key={task.id} task={task} onDelete={() => setTaskPendingDeletion(task)} onCheck={() => handleCheck(task)} />
+                  <SwipeableTaskCard
+                    key={task.id}
+                    task={task}
+                    onDelete={() => setTaskPendingDeletion(task)}
+                    onCheck={() => handleCheck(task)}
+                    onPress={() => router.push(`/nova-tarefa?id=${task.id}`)}
+                  />
                 ))}
               </>
             )}
