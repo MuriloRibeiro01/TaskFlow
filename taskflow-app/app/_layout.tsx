@@ -14,6 +14,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { AuthProvider } from '@/database/context/auth_context';
+import { ToastProvider } from '@/components/notifications/Toast';
 
 import { initDatabase } from '@/database/schemas';
 
@@ -25,13 +26,13 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="nova-tarefa" />
-      <Stack.Screen name="auth/callback" />
-      <Stack.Screen name="historico" />
-      <Stack.Screen name="estatisticas" />
-      <Stack.Screen name="priorizar" />
+    <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
+      <Stack.Screen name="nova-tarefa" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="auth/callback" options={{ animation: 'none' }} />
+      <Stack.Screen name="historico" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="estatisticas" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="priorizar" options={{ animation: 'slide_from_bottom' }} />
     </Stack>
   );
 }
@@ -48,9 +49,11 @@ export default function RootLayout() {
   if (!fontsLoaded) return null;
 
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-      <StatusBar style="auto" />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <RootLayoutNav />
+        <StatusBar style="light" />
+      </AuthProvider>
+    </ToastProvider>
   );
 }
