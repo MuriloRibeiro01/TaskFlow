@@ -1,7 +1,9 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { Colors, FontSize, Fonts, Spacing } from '@/theme';
+import { ColorTheme, FontSize, Fonts, Spacing } from '@/theme';
+import { useTheme } from '@/hooks/useTheme';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { useAuth } from '@/database/context/auth_context';
 import { getAllTasks } from '@/database/tasks';
 import { Task } from '@/types/task.types';
@@ -44,6 +46,8 @@ function formatFocusLabel(minutes: number): string {
 }
 
 export default function Estatisticas() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
 
@@ -106,7 +110,7 @@ export default function Estatisticas() {
   );
 
   return (
-    <View style={styles.screen}>
+    <Animated.View entering={FadeIn.duration(200)} style={styles.screen}>
       {/* Header dark */}
       <View style={styles.header}>
         <Pressable
@@ -163,7 +167,7 @@ export default function Estatisticas() {
                           styles.bar,
                           {
                             height: barHeight,
-                            backgroundColor: Colors.vermelho,
+                            backgroundColor: colors.vermelho,
                           },
                         ]}
                       />
@@ -202,7 +206,7 @@ export default function Estatisticas() {
                           styles.bar,
                           {
                             height: barHeight,
-                            backgroundColor: Colors.tinta,
+                            backgroundColor: colors.tinta,
                           },
                         ]}
                       />
@@ -215,133 +219,145 @@ export default function Estatisticas() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: Colors.papel,
-  },
-  header: {
-    backgroundColor: Colors.tinta,
-    paddingTop: Spacing.sp12,
-    paddingHorizontal: Spacing.sp5,
-    paddingBottom: Spacing.sp5,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    marginRight: 'auto',
-    paddingVertical: Spacing.sp1,
-    marginBottom: Spacing.sp2,
-  },
-  backText: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.body,
-    color: Colors.papel,
-  },
-  headerTitle: {
-    fontFamily: Fonts.barlowBold,
-    fontSize: FontSize.headingXl,
-    color: Colors.papel,
-    letterSpacing: 0.5,
-  },
-  headerSubtitle: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.label,
-    color: Colors.cinza,
-    marginTop: Spacing.sp1,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: Spacing.sp5,
-    paddingTop: Spacing.sp5,
-    paddingBottom: Spacing.sp8,
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: Spacing.sp2,
-    marginBottom: Spacing.sp6,
-  },
-  metricCard: {
-    flex: 1,
-    backgroundColor: Colors.papel2,
-    borderWidth: 1,
-    borderColor: Colors.papel3,
-    paddingVertical: Spacing.sp4,
-    paddingHorizontal: Spacing.sp2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 0,
-  },
-  metricValue: {
-    fontFamily: Fonts.barlowBold,
-    fontSize: FontSize.headingLg,
-    color: Colors.tinta,
-  },
-  metricLabel: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.taskId,
-    color: Colors.cinza,
-    marginTop: Spacing.sp1,
-    letterSpacing: 0.3,
-    textAlign: 'center',
-  },
-  section: {
-    marginBottom: Spacing.sp6,
-  },
-  sectionTitle: {
-    fontFamily: Fonts.barlowBold,
-    fontSize: FontSize.caption,
-    color: Colors.tinta,
-    letterSpacing: 0.5,
-    marginBottom: Spacing.sp3,
-  },
-  chartCard: {
-    backgroundColor: Colors.papel2,
-    borderWidth: 1,
-    borderColor: Colors.papel3,
-    paddingVertical: Spacing.sp4,
-    paddingHorizontal: Spacing.sp2,
-    borderRadius: 0,
-  },
-  chartRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  chartColumn: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  chartValueText: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.taskId,
-    color: Colors.cinza,
-    marginBottom: Spacing.sp2,
-    height: 14,
-    textAlign: 'center',
-  },
-  barTrack: {
-    height: 80,
-    width: '100%',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  bar: {
-    width: 20,
-    borderRadius: 0,
-  },
-  chartDayText: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.label,
-    color: Colors.cinza,
-    marginTop: Spacing.sp2,
-    letterSpacing: 0.3,
-  },
-});
+function createStyles(colors: ColorTheme) {
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.papel,
+    },
+    header: {
+      backgroundColor: colors.tinta,
+      paddingTop: Spacing.sp12,
+      paddingHorizontal: Spacing.sp5,
+      paddingBottom: Spacing.sp5,
+    },
+    backButton: {
+      alignSelf: 'flex-start',
+      marginRight: 'auto',
+      paddingVertical: Spacing.sp1,
+      marginBottom: Spacing.sp2,
+    },
+    backText: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.body,
+      color: colors.textoClaro,
+    },
+    headerTitle: {
+      fontFamily: Fonts.barlowBold,
+      fontSize: FontSize.headingXl,
+      color: colors.textoClaro,
+      letterSpacing: 0.5,
+    },
+    headerSubtitle: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.label,
+      color: colors.cinza,
+      marginTop: Spacing.sp1,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    content: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: Spacing.sp5,
+      paddingTop: Spacing.sp5,
+      paddingBottom: Spacing.sp8,
+    },
+    metricsRow: {
+      flexDirection: 'row',
+      gap: Spacing.sp2,
+      marginBottom: Spacing.sp6,
+    },
+    metricCard: {
+      flex: 1,
+      backgroundColor: colors.papel2,
+      borderWidth: 1,
+      borderColor: colors.papel3,
+      paddingVertical: Spacing.sp4,
+      paddingHorizontal: Spacing.sp2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 0,
+    },
+    metricValue: {
+      fontFamily: Fonts.barlowBold,
+      fontSize: FontSize.headingLg,
+      color: colors.tinta,
+    },
+    metricLabel: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.taskId,
+      color: colors.cinza,
+      marginTop: Spacing.sp1,
+      letterSpacing: 0.3,
+      textAlign: 'center',
+    },
+    section: {
+      marginBottom: Spacing.sp6,
+    },
+    sectionTitle: {
+      fontFamily: Fonts.barlowBold,
+      fontSize: FontSize.caption,
+      color: colors.tinta,
+      letterSpacing: 0.5,
+      marginBottom: Spacing.sp3,
+    },
+    chartCard: {
+      backgroundColor: colors.papel2,
+      borderWidth: 1,
+      borderColor: colors.papel3,
+      paddingVertical: Spacing.sp4,
+      paddingHorizontal: Spacing.sp2,
+      borderRadius: 0,
+    },
+    chartRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-end',
+    },
+    chartColumn: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    chartValueText: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.taskId,
+      color: colors.cinza,
+      marginBottom: Spacing.sp2,
+      height: 14,
+      textAlign: 'center',
+    },
+    barTrack: {
+      height: 80,
+      width: '100%',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+    },
+    bar: {
+      width: 20,
+      borderRadius: 0,
+    },
+    chartDayText: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.label,
+      color: colors.cinza,
+      marginTop: Spacing.sp2,
+      letterSpacing: 0.3,
+    },
+  });
+}
+
+let cachedStyles: ReturnType<typeof createStyles> | null = null;
+let cachedTheme: ColorTheme | null = null;
+
+function getStyles(colors: ColorTheme) {
+  if (cachedStyles && cachedTheme === colors) return cachedStyles;
+  cachedTheme = colors;
+  cachedStyles = createStyles(colors);
+  return cachedStyles;
+}

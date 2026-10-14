@@ -1,7 +1,9 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { Colors, FontSize, Fonts, Spacing } from '@/theme';
+import { ColorTheme, FontSize, Fonts, Spacing } from '@/theme';
+import { useTheme } from '@/hooks/useTheme';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { useAuth } from '@/database/context/auth_context';
 import { getAllTasks } from '@/database/tasks';
 import { Task } from '@/types/task.types';
@@ -31,13 +33,15 @@ function extractCompletionTime(completedAt: string | null): string {
 }
 
 function PriorityBadge({ priority }: { priority: string }) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const map: Record<string, { symbol: string; label: string; color: string; bg: string }> = {
-    high: { symbol: '▲', label: 'Alta', color: Colors.vermelho, bg: 'rgba(214,59,47,0.08)' },
-    medium: { symbol: '—', label: 'Média', color: Colors.grafite, bg: 'rgba(14,14,15,0.06)' },
-    low: { symbol: '▽', label: 'Baixa', color: Colors.cinza, bg: 'rgba(14,14,15,0.03)' },
-    Alta: { symbol: '▲', label: 'Alta', color: Colors.vermelho, bg: 'rgba(214,59,47,0.08)' },
-    Média: { symbol: '—', label: 'Média', color: Colors.grafite, bg: 'rgba(14,14,15,0.06)' },
-    Baixa: { symbol: '▽', label: 'Baixa', color: Colors.cinza, bg: 'rgba(14,14,15,0.03)' },
+    high: { symbol: '▲', label: 'Alta', color: colors.vermelho, bg: 'rgba(214,59,47,0.08)' },
+    medium: { symbol: '—', label: 'Média', color: colors.grafite, bg: 'rgba(14,14,15,0.06)' },
+    low: { symbol: '▽', label: 'Baixa', color: colors.cinza, bg: 'rgba(14,14,15,0.03)' },
+    Alta: { symbol: '▲', label: 'Alta', color: colors.vermelho, bg: 'rgba(214,59,47,0.08)' },
+    Média: { symbol: '—', label: 'Média', color: colors.grafite, bg: 'rgba(14,14,15,0.06)' },
+    Baixa: { symbol: '▽', label: 'Baixa', color: colors.cinza, bg: 'rgba(14,14,15,0.03)' },
   };
   const s = map[priority] ?? map.low;
   return (
@@ -50,6 +54,8 @@ function PriorityBadge({ priority }: { priority: string }) {
 }
 
 export default function Historico() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
 
@@ -87,7 +93,7 @@ export default function Historico() {
   const subtitleText = `${doneTasks.length} ${doneTasks.length === 1 ? 'TAREFA CONCLUÍDA' : 'TAREFAS CONCLUÍDAS'}`;
 
   return (
-    <View style={styles.screen}>
+    <Animated.View entering={FadeIn.duration(200)} style={styles.screen}>
       {/* Header dark */}
       <View style={styles.header}>
         <Pressable
@@ -154,148 +160,160 @@ export default function Historico() {
           ))
         )}
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: Colors.papel,
-  },
-  header: {
-    backgroundColor: Colors.tinta,
-    paddingTop: Spacing.sp12,
-    paddingHorizontal: Spacing.sp5,
-    paddingBottom: Spacing.sp5,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    marginRight: 'auto',
-    paddingVertical: Spacing.sp1,
-    marginBottom: Spacing.sp2,
-  },
-  backText: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.body,
-    color: Colors.papel,
-  },
-  headerTitle: {
-    fontFamily: Fonts.barlowBold,
-    fontSize: FontSize.headingXl,
-    color: Colors.papel,
-    letterSpacing: 0.5,
-  },
-  headerSubtitle: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.label,
-    color: Colors.cinza,
-    marginTop: Spacing.sp1,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    paddingHorizontal: Spacing.sp4,
-    paddingBottom: Spacing.sp8,
-  },
-  groupContainer: {
-    marginTop: Spacing.sp4,
-  },
-  groupHeader: {
-    paddingVertical: Spacing.sp3,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.papel3,
-    marginBottom: Spacing.sp2,
-  },
-  groupDateText: {
-    fontFamily: Fonts.barlowBold,
-    fontSize: FontSize.caption,
-    color: Colors.tinta,
-    letterSpacing: 0.5,
-  },
-  card: {
-    backgroundColor: Colors.papel2,
-    padding: Spacing.sp4,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.papel3,
-    borderRadius: 0,
-    marginBottom: Spacing.sp2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.sp2,
-  },
-  taskId: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.taskId,
-    color: Colors.cinza,
-    letterSpacing: 0.3,
-  },
-  priorityBadge: {
-    paddingHorizontal: Spacing.sp2,
-    paddingVertical: 2,
-    borderRadius: 0,
-  },
-  priorityText: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.label,
-    letterSpacing: 0.3,
-  },
-  taskTitle: {
-    fontFamily: Fonts.barlowSemiBold,
-    fontSize: FontSize.taskTitle,
-    color: Colors.tinta,
-    marginBottom: Spacing.sp3,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cardMeta: {
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.label,
-    color: Colors.cinza,
-    letterSpacing: 0.3,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingTop: Spacing.sp12,
-    paddingBottom: Spacing.sp8,
-  },
-  emptyIcon: {
-    width: 48,
-    height: 48,
-    borderWidth: 1,
-    borderColor: Colors.grafite,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.sp4,
-    borderRadius: 0,
-  },
-  emptyIconText: {
-    fontFamily: Fonts.mono,
-    fontSize: 22,
-    color: Colors.grafite,
-  },
-  emptyTitle: {
-    fontFamily: Fonts.barlowBold,
-    fontSize: FontSize.caption,
-    color: Colors.tinta,
-    letterSpacing: 0.5,
-  },
-  emptyDescription: {
-    marginTop: Spacing.sp2,
-    fontFamily: Fonts.mono,
-    fontSize: FontSize.label,
-    color: Colors.cinza,
-    textAlign: 'center',
-    lineHeight: 18,
-    letterSpacing: 0.4,
-  },
-});
+function createStyles(colors: ColorTheme) {
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.papel,
+    },
+    header: {
+      backgroundColor: colors.tinta,
+      paddingTop: Spacing.sp12,
+      paddingHorizontal: Spacing.sp5,
+      paddingBottom: Spacing.sp5,
+    },
+    backButton: {
+      alignSelf: 'flex-start',
+      marginRight: 'auto',
+      paddingVertical: Spacing.sp1,
+      marginBottom: Spacing.sp2,
+    },
+    backText: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.body,
+      color: colors.textoClaro,
+    },
+    headerTitle: {
+      fontFamily: Fonts.barlowBold,
+      fontSize: FontSize.headingXl,
+      color: colors.textoClaro,
+      letterSpacing: 0.5,
+    },
+    headerSubtitle: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.label,
+      color: colors.cinza,
+      marginTop: Spacing.sp1,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    list: {
+      flex: 1,
+    },
+    listContent: {
+      paddingHorizontal: Spacing.sp4,
+      paddingBottom: Spacing.sp8,
+    },
+    groupContainer: {
+      marginTop: Spacing.sp4,
+    },
+    groupHeader: {
+      paddingVertical: Spacing.sp3,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.papel3,
+      marginBottom: Spacing.sp2,
+    },
+    groupDateText: {
+      fontFamily: Fonts.barlowBold,
+      fontSize: FontSize.caption,
+      color: colors.tinta,
+      letterSpacing: 0.5,
+    },
+    card: {
+      backgroundColor: colors.papel2,
+      padding: Spacing.sp4,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.papel3,
+      borderRadius: 0,
+      marginBottom: Spacing.sp2,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: Spacing.sp2,
+    },
+    taskId: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.taskId,
+      color: colors.cinza,
+      letterSpacing: 0.3,
+    },
+    priorityBadge: {
+      paddingHorizontal: Spacing.sp2,
+      paddingVertical: 2,
+      borderRadius: 0,
+    },
+    priorityText: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.label,
+      letterSpacing: 0.3,
+    },
+    taskTitle: {
+      fontFamily: Fonts.barlowSemiBold,
+      fontSize: FontSize.taskTitle,
+      color: colors.tinta,
+      marginBottom: Spacing.sp3,
+    },
+    cardFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    cardMeta: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.label,
+      color: colors.cinza,
+      letterSpacing: 0.3,
+    },
+    emptyState: {
+      alignItems: 'center',
+      paddingTop: Spacing.sp12,
+      paddingBottom: Spacing.sp8,
+    },
+    emptyIcon: {
+      width: 48,
+      height: 48,
+      borderWidth: 1,
+      borderColor: colors.grafite,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: Spacing.sp4,
+      borderRadius: 0,
+    },
+    emptyIconText: {
+      fontFamily: Fonts.mono,
+      fontSize: 22,
+      color: colors.grafite,
+    },
+    emptyTitle: {
+      fontFamily: Fonts.barlowBold,
+      fontSize: FontSize.caption,
+      color: colors.tinta,
+      letterSpacing: 0.5,
+    },
+    emptyDescription: {
+      marginTop: Spacing.sp2,
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.label,
+      color: colors.cinza,
+      textAlign: 'center',
+      lineHeight: 18,
+      letterSpacing: 0.4,
+    },
+  });
+}
+
+let cachedStyles: ReturnType<typeof createStyles> | null = null;
+let cachedTheme: ColorTheme | null = null;
+
+function getStyles(colors: ColorTheme) {
+  if (cachedStyles && cachedTheme === colors) return cachedStyles;
+  cachedTheme = colors;
+  cachedStyles = createStyles(colors);
+  return cachedStyles;
+}
