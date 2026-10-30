@@ -20,20 +20,31 @@ public class AuthService {
 
   private final UserRepository users;
   private final JwtEncoder encoder;
+  private final SupabaseAuth supabase;
 
-  AuthService(UserRepository users, JwtEncoder encoder) {
+  AuthService(UserRepository users, JwtEncoder encoder, SupabaseAuth supabase) {
+    this.supabase = supabase;
     this.users = users;
     this.encoder = encoder;
   }
 
   @Transactional
   public LoginResponse devLogin(DevLoginRequest request) {
+    return login(request.email(), request.displayName(), null);
+  }
+
+  @Transactional
+  public LoginResponse supabaseLogin(SupabaseLoginRequest request) {
+    SupabaseAuth.Identity id = supabase.verify(request.accessToken());
+    return login(id.email(), id.displayName(), id.avatarUrl());
+  }
+
+  private LoginResponse login(String rawEmail, String displayName, String avatarUrl) {
     // O índice único do Postgres diferencia maiúsculas; sem isso "A@x" e "a@x" virariam 2 contas.
-    String email = request.email().toLowerCase(Locale.ROOT);
+    String email = rawEmail.toLowerCase(Locale.ROOT);
     User user = users.findByEmail(email).orElseGet(() -> new User(email));
-    if (request.displayName() != null && !request.displayName().isEmpty()) {
-      user.setDisplayName(request.displayName());
-    }
+    if (displayName != null && !displayName.isEmpty()) user.setDisplayName(displayName);
+    if (avatarUrl != null && !avatarUrl.isEmpty()) user.setAvatarUrl(avatarUrl);
     user = users.save(user);
     return new LoginResponse(issueToken(user), user);
   }

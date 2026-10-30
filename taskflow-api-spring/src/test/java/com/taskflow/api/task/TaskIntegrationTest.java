@@ -125,4 +125,18 @@ class TaskIntegrationTest {
     call(get("/tasks/0"), tokenA, null).andExpect(status().isBadRequest());
     call(get("/tasks/99999999999"), tokenA, null).andExpect(status().isBadRequest());
   }
+
+  @Test
+  void dueDateEQuadrante() throws Exception {
+    int id =
+        create(tokenA, "{\"title\":\"q\",\"dueDate\":\"2026-12-01T12:00:00.000Z\",\"quadrant\":\"agendar\"}");
+    call(get("/tasks/" + id), tokenA, null)
+        .andExpect(jsonPath("$.dueDate").value("2026-12-01T12:00:00Z"))
+        .andExpect(jsonPath("$.quadrant").value("agendar"));
+    call(patch("/tasks/" + id), tokenA, "{\"quadrant\":\"fazer_agora\"}")
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.quadrant").value("fazer_agora"))
+        .andExpect(jsonPath("$.dueDate").value("2026-12-01T12:00:00Z"));
+    call(post("/tasks"), tokenA, "{\"title\":\"q\",\"quadrant\":\"xyz\"}").andExpect(status().isBadRequest());
+  }
 }

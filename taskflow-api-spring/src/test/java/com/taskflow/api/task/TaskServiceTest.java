@@ -34,12 +34,12 @@ class TaskServiceTest {
   }
 
   private static UpdateTaskRequest update(String title, TaskStatus status) {
-    return new UpdateTaskRequest(title, null, null, null, status, null);
+    return new UpdateTaskRequest(title, null, null, null, status, null, null, null);
   }
 
   @Test
   void createGravaComOUserIdDoTokenEOsDefaults() {
-    Task created = service.create(USER, new CreateTaskRequest("Estudar", null, null, 3));
+    Task created = service.create(USER, new CreateTaskRequest("Estudar", null, null, 3, null, null));
     assertThat(created.getUserId()).isEqualTo(USER);
     assertThat(created.getTitle()).isEqualTo("Estudar");
     assertThat(created.getEstimatedPomodoros()).isEqualTo(3);

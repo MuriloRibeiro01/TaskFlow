@@ -90,19 +90,5 @@ export async function userAuthentication() {
 
     await saveLocalUser(user);
 
-    // O perfil é complementar: se o upsert falhar, a sessão continua válida
-    const { error: profileError } = await supabase
-        .from('users')
-        .upsert({
-            id: user.id,
-            email: user.email,
-            display_name: user.user_metadata?.full_name,
-            avatar_url: user.user_metadata?.avatar_url,
-        });
-
-    if (profileError) {
-        console.error('Erro ao salvar o perfil do usuário:', profileError);
-    }
-
     return user;
 }
