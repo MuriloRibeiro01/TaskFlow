@@ -68,6 +68,15 @@ export function initDatabase() {
         );
     `);
 
+    // Apagados localmente que ainda faltam apagar na API (ver deleteTask e SyncService)
+    db.execSync(`
+        CREATE TABLE IF NOT EXISTS pending_deletes (
+            kind      TEXT NOT NULL CHECK(kind IN ('task', 'session')),
+            remote_id TEXT NOT NULL,
+            PRIMARY KEY (kind, remote_id)
+        );
+    `);
+
     db.execSync(`
         CREATE TABLE IF NOT EXISTS prioritization_sessions (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -28,6 +28,13 @@ export function createTask(input: {
 
 export function deleteTask(id: number) {
 
+    // Tarefa que já existe na API: guarda o id para o sync apagar lá (só ids numéricos; UUID do Supabase não vale)
+    db.runSync(
+        `INSERT OR IGNORE INTO pending_deletes (kind, remote_id)
+         SELECT 'task', remote_id FROM tasks
+         WHERE id = ? AND remote_id IS NOT NULL AND remote_id NOT GLOB '*[^0-9]*'`, [id]
+    );
+
     db.runSync(
         'DELETE FROM tasks WHERE id = ?', [id]
     );
@@ -42,7 +49,7 @@ export function editTask(id: number, input: {
   due_date?: string | null;
 }) {
     db.runSync(
-        'UPDATE tasks SET title = ?, description = ?, priority = ?, estimated_pomodoros = ?, due_date = ? WHERE id = ?',
+        "UPDATE tasks SET title = ?, description = ?, priority = ?, estimated_pomodoros = ?, due_date = ?, sync_status = 'pending', updated_at = datetime('now') WHERE id = ?",
         [input.title, input.description, input.priority, input.estimated_pomodoros ?? null, input.due_date ?? null, id]
     )
 }
@@ -56,7 +63,7 @@ export function completeTask(id: number) {
     const countPomodoro = result?.count ?? 0;
 
     db.runSync(
-        'UPDATE tasks SET status = ?, completed_at = datetime("now"), completed_pomodoros = ? WHERE id = ?', ['done', countPomodoro, id]
+        'UPDATE tasks SET status = ?, completed_at = datetime("now"), completed_pomodoros = ?, sync_status = \'pending\', updated_at = datetime(\'now\') WHERE id = ?', ['done', countPomodoro, id]
     )
 }
 
@@ -80,6 +87,6 @@ export function getTaskById(id: number) {
 
 export function reopenTask(id: number) {
     db.runSync(
-        'UPDATE tasks SET status = ? WHERE id = ?', ['pending', id]
+        'UPDATE tasks SET status = ?, sync_status = \'pending\', updated_at = datetime(\'now\') WHERE id = ?', ['pending', id]
     )
 }

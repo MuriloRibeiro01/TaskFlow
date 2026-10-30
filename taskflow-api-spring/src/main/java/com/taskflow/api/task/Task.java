@@ -47,6 +47,11 @@ public class Task {
 
   private Instant completedAt;
 
+  private Instant dueDate;
+
+  @Enumerated(EnumType.STRING)
+  private Quadrant quadrant;
+
   @Enumerated(EnumType.STRING)
   @JdbcTypeCode(SqlTypes.NAMED_ENUM)
   @Column(nullable = false)
@@ -92,6 +97,10 @@ public class Task {
   public void setStatus(TaskStatus status) { this.status = status; }
   public Instant getCompletedAt() { return completedAt; }
   public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
+  public Instant getDueDate() { return dueDate; }
+  public void setDueDate(Instant dueDate) { this.dueDate = dueDate; }
+  public Quadrant getQuadrant() { return quadrant; }
+  public void setQuadrant(Quadrant quadrant) { this.quadrant = quadrant; }
   public SyncStatus getSyncStatus() { return syncStatus; }
   public Instant getCreatedAt() { return createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }

@@ -22,6 +22,8 @@ public class TaskService {
     task.setDescription(request.description());
     if (request.priority() != null) task.setPriority(request.priority());
     task.setEstimatedPomodoros(request.estimatedPomodoros());
+    task.setDueDate(request.dueDate());
+    task.setQuadrant(request.quadrant());
     return tasks.save(task);
   }
 
@@ -44,6 +46,8 @@ public class TaskService {
     if (request.priority() != null) task.setPriority(request.priority());
     if (request.estimatedPomodoros() != null) task.setEstimatedPomodoros(request.estimatedPomodoros());
     if (request.completedPomodoros() != null) task.setCompletedPomodoros(request.completedPomodoros());
+    if (request.dueDate() != null) task.setDueDate(request.dueDate());
+    if (request.quadrant() != null) task.setQuadrant(request.quadrant());
     if (request.status() != null) {
       if (request.status() == TaskStatus.done && task.getStatus() != TaskStatus.done) {
         task.setCompletedAt(Task.now());

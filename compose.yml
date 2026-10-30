@@ -34,6 +34,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       # Login sem Google para testes; desligado se não estiver no .env
       ENABLE_DEV_LOGIN: ${ENABLE_DEV_LOGIN:-false}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
     depends_on:
       # O Flyway roda na inicialização: a API só sobe com o banco aceitando conexões.
       db:
