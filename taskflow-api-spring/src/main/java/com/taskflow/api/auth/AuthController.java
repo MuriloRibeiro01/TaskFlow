@@ -14,10 +14,13 @@ import org.springframework.web.server.ResponseStatusException;
 class AuthController {
 
   private final AuthService auth;
+  private final GoogleAuth google;
   private final boolean devLoginEnabled;
 
-  AuthController(AuthService auth, @Value("${taskflow.dev-login-enabled:false}") String devLoginFlag) {
+  AuthController(
+      AuthService auth, GoogleAuth google, @Value("${taskflow.dev-login-enabled:false}") String devLoginFlag) {
     this.auth = auth;
+    this.google = google;
     this.devLoginEnabled = "true".equals(devLoginFlag);
   }
 
@@ -28,9 +31,10 @@ class AuthController {
     return auth.devLogin(request);
   }
 
-  // Troca o token do Supabase (login com Google no app) pelo JWT desta API.
-  @PostMapping("/supabase-login")
-  LoginResponse supabaseLogin(@Valid @RequestBody SupabaseLoginRequest request) {
-    return auth.supabaseLogin(request);
+  // Troca o ID token do Google pelo JWT desta API. Confere o token antes de abrir a transação,
+  // para a chamada ao Google não segurar uma conexão do banco.
+  @PostMapping("/google")
+  LoginResponse googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+    return auth.login(google.verify(request.idToken()));
   }
 }

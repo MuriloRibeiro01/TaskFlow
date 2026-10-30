@@ -34,8 +34,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       # Login sem Google para testes; desligado se não estiver no .env
       ENABLE_DEV_LOGIN: ${ENABLE_DEV_LOGIN:-false}
-      SUPABASE_URL: ${SUPABASE_URL:-}
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      # Client IDs do Google (Web, Android, iOS) separados por vírgula; sem eles POST /auth/google responde 503
+      GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:-}
     depends_on:
       # O Flyway roda na inicialização: a API só sobe com o banco aceitando conexões.
       db:

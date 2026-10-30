@@ -40,8 +40,8 @@ export default function Perfil() {
   const totalFocusMinutes = tasks.reduce((acc, t) => acc + (t.estimated_pomodoros ?? 0), 0) * 25;
   const focusTimeFormatted = formatFocusTime(totalFocusMinutes);
 
-  const avatarUrl = user?.user_metadata?.avatar_url;
-  const fullName = user?.user_metadata?.full_name ?? 'Usuário';
+  const avatarUrl = user?.avatarUrl;
+  const fullName = user?.displayName ?? 'Usuário';
   const email = user?.email ?? '';
 
   const handleSignOut = async () => {

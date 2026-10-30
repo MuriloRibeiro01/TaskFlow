@@ -3,13 +3,12 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { AppState } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import { SyncService } from "../sync/sync.service";
-import { logout, saveLocalUser } from "../services/session";
+import { logout } from "../services/session";
 import { userAuthentication } from "../services/auth";
-import { User } from "@supabase/supabase-js";
-import { supabase } from "../supabase/supabase";
+import { getSession, onSessionExpired, type AuthUser } from "../api/client";
 
 interface AuthContextData {
-    user: User | null;
+    user: AuthUser | null;
     // true apenas enquanto a sessão salva é restaurada na abertura do app
     isLoading: boolean;
     signIn: () => Promise<void>;
@@ -21,24 +20,17 @@ const AuthContext = createContext<AuthContextData | null>(null);
 const syncService = new SyncService();
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
+    const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Emite INITIAL_SESSION (sessão salva no aparelho, funciona offline),
-        // depois SIGNED_IN / TOKEN_REFRESHED / SIGNED_OUT
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (_event, session) => {
-                const sessionUser = session?.user ?? null;
-                if (sessionUser) {
-                    saveLocalUser(sessionUser);
-                }
-                setUser(sessionUser);
-                setLoading(false);
-            }
-        );
+        // Sessão salva no aparelho: abre logado mesmo offline
+        getSession()
+            .then((session) => setUser(session?.user ?? null))
+            .finally(() => setLoading(false));
 
-        return () => subscription.unsubscribe();
+        // A API recusou o token (expirou): volta para o login
+        return onSessionExpired(() => setUser(null));
     }, []);
 
     // Sincroniza com a API ao entrar, ao voltar para o app e ao reconectar. O SyncService ignora

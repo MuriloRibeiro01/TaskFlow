@@ -23,7 +23,7 @@ taskflow:
   jwt-secret: ${JWT_SECRET:}
   # Login sem prova de identidade: só com o valor exato "true". Nunca em produção.
   dev-login-enabled: ${ENABLE_DEV_LOGIN:false}
-  # Supabase só para o login com Google; sem os dois, POST /auth/supabase-login responde 503.
-  supabase:
-    url: ${SUPABASE_URL:}
-    anon-key: ${SUPABASE_ANON_KEY:}
+  # Client IDs OAuth do Google (Web, Android, iOS) separados por vírgula: só tokens emitidos para
+  # eles são aceitos. Sem nenhum, POST /auth/google responde 503.
+  google:
+    client-ids: ${GOOGLE_CLIENT_IDS:}

@@ -2,12 +2,12 @@
 
 Documento de continuação para retomar o trabalho em outra máquina. Estado em **30/10/2026**, branch `feature/backend-spring`.
 
-Leia antes: [actions/2026-10-27-ligacao-app-api-spring.md](actions/2026-10-27-ligacao-app-api-spring.md) (o que foi feito) e [analises/analise-migracao-spring.md](analises/analise-migracao-spring.md) (decisões da migração).
+Leia antes: [actions/2026-10-30-login-google-direto-api.md](actions/2026-10-30-login-google-direto-api.md) (última etapa), [actions/2026-10-27-ligacao-app-api-spring.md](actions/2026-10-27-ligacao-app-api-spring.md) (ligação app ↔ API) e [analises/analise-migracao-spring.md](analises/analise-migracao-spring.md) (decisões da migração).
 
 ## Decisões já tomadas (não rediscutir)
 
-- Backend é **só o Spring** (`taskflow-api-spring/`). O Supabase fica **apenas como provedor de login** (Google).
-- O app troca o token do Supabase por um JWT da API em `POST /auth/supabase-login`.
+- Backend é **só o Spring** (`taskflow-api-spring/`). **Sem Supabase**, nem para o login (decisão de 30/10).
+- Login com Google direto na API: o app manda o `idToken` do Google para `POST /auth/google` e recebe o JWT da API (30 dias).
 - **Flyway é o único dono do schema.** Migration nova = `V3__...sql` (nunca Prisma, nunca `ddl-auto=update`). Faça `pg_dump` antes de migrar dados reais.
 - Metodologia: **testes antes da implementação** e, no fim de cada demanda, um `.md` datado em `actions/`.
 
@@ -15,21 +15,27 @@ Leia antes: [actions/2026-10-27-ligacao-app-api-spring.md](actions/2026-10-27-li
 
 | Parte | Situação |
 |---|---|
-| API Spring: auth (dev-login e supabase-login), `/users/me`, CRUD de `/tasks`, CRUD de `/sessions` | Pronta. 49 testes (Testcontainers). |
+| API Spring: auth (dev-login e Google), `/users/me`, CRUD de `/tasks`, CRUD de `/sessions` | Pronta. 59 testes (Testcontainers). Rodando no Docker desta máquina. |
 | Banco (Postgres 15 no Docker, porta 5435) | Na V2 (`due_date`, `quadrant`). Vazio (0 usuários). |
 | App: cliente HTTP, mappers, `SyncService` apontado para a API, gatilhos de sync | Escrito e testado em Jest. **Nunca rodou em aparelho/emulador.** |
-| Login com Google ponta a ponta (app → Supabase → API) | **Não validado.** |
+| Login com Google ponta a ponta (app → Google → API) | Escrito e testado em Jest/JUnit. **Não validado: faltam os Client IDs do Google.** |
 
 ## Falta fazer (em ordem)
 
-### 1. Configurar e validar a ligação de ponta a ponta (bloqueia todo o resto)
+### 1. Configurar o Google e validar de ponta a ponta (bloqueia todo o resto)
 
-- [ ] No `.env` da raiz, preencher `SUPABASE_URL` e `SUPABASE_ANON_KEY` (os mesmos valores do app). Sem eles `POST /auth/supabase-login` responde 503.
-- [ ] No `.env` do app, definir `EXPO_PUBLIC_API_URL` com o **IP da máquina** (ex.: `http://192.168.0.10:3000`). No aparelho/emulador `localhost` é o próprio aparelho.
-- [ ] Reconstruir a API: `docker compose build api && docker compose up -d api`. A imagem atual **não tem** a correção de segurança abaixo (email confirmado).
-- [ ] Rodar o app, entrar com Google e conferir: criar tarefa → sync → linha em `tasks` no Postgres (`docker exec taskflow-postgres psql ...`).
+Já feito nesta máquina: `.env` da raiz, `EXPO_PUBLIC_API_URL=http://192.168.0.179:3000`, `docker compose up -d` (banco na V2, vazio).
+
+- [ ] **Google Cloud Console** (APIs e serviços → Credenciais), no mesmo projeto em que o Supabase tinha o provedor Google, se ainda existir:
+  - Tela de consentimento OAuth configurada (modo teste: adicione os emails do grupo como testadores).
+  - Client ID **Web application** → vai em `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (app) e em `GOOGLE_CLIENT_IDS` (raiz). O Web Client que o Supabase usava serve.
+  - Client ID **Android**: pacote `com.taskflow.app` + SHA-1 da chave de debug (`keytool -list -v -keystore taskflow-app/android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android`). Não vai em `.env`, mas sem ele o Google recusa o app.
+  - (iOS, se for usar) Client ID iOS → `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` e também em `GOOGLE_CLIENT_IDS`; o plugin no `app.json` precisa do `iosUrlScheme`.
+- [ ] `docker compose up -d api` depois de preencher `GOOGLE_CLIENT_IDS` (sem ele `POST /auth/google` responde 503).
+- [ ] **Novo dev build** (entrou código nativo do Google Sign-In; não roda no Expo Go): `cd taskflow-app && npx expo prebuild --clean && npx expo run:android`.
+- [ ] Entrar com Google e conferir: criar tarefa → sync → linha em `tasks` no Postgres (`docker exec taskflow-postgres psql ...`).
 - [ ] Testar o ciclo completo: editar, concluir, apagar, concluir um pomodoro (gera sessão) e abrir o app em outro aparelho/reinstalar para ver o pull.
-- [ ] Confirmar que `GET /user` do Supabase devolve `email_confirmed_at` para contas do Google (a API agora exige isso; se vier vazio, o login dá 401).
+- [ ] Se o aparelho não alcançar a API: liberar a porta 3000 no Firewall do Windows.
 
 ### 2. Pendências de código no app
 
@@ -37,26 +43,26 @@ Leia antes: [actions/2026-10-27-ligacao-app-api-spring.md](actions/2026-10-27-li
 - [ ] **Apagado em outro aparelho não some neste.** Só o apagado local chega na API. Solução provável: coluna `deleted_at` na API (soft delete) ou comparar a lista remota com a local.
 - [ ] **Sync após gravar:** hoje só roda no login, ao voltar para o app e ao reconectar. Avaliar disparar após criar/editar.
 - [ ] **`database/pomodoro.ts`:** `completeSession`/`cancelSession` usam a coluna `duration_minutes`, que não existe no schema, e `createSession` usa `type: 'break'`, que a API não aceita (`short_break`/`long_break`). O caminho real (`recordCompletedPomodoro`) está certo. Corrigir ou remover.
-- [ ] **Código morto que ainda chama o Supabase para dados:** `database/services/tasks.service.ts`, `database/services/pomodoro.service.ts`, `database/sync/sync.strategy.ts`, `database/sync/realtime.service.ts`. Nenhuma tela usa. Remover **com aprovação do grupo**.
+- [ ] **Tarefas locais antigas:** as criadas com o usuário do Supabase (UUID em `user_id`) não aparecem para o usuário novo da API. Decidir se vale migrar (ex.: adotar no primeiro login as tarefas de outro `user_id`).
 - [ ] `tsc --noEmit` tem 4 erros antigos em `app/` (rotas tipadas do expo-router: `/priorizar`, `/historico`, `/estatisticas` e um spread em `index.tsx`). Não vieram desta etapa.
 
 ### 3. Pendências de backend
 
-- [ ] `SupabaseAuth` não tem **timeout**: um Supabase lento segura a requisição e uma conexão do banco (o `supabaseLogin` é `@Transactional` e faz a chamada HTTP dentro da transação). Configurar timeout e, de preferência, verificar o token antes de abrir a transação.
-- [ ] Sem **rate limit** em `/auth/supabase-login` e `/auth/dev-login`.
-- [ ] Passo 5 original do plano (Google direto na API) ficou **descartado** pela decisão de manter o Supabase como login.
+- [x] ~~Timeout e chamada externa dentro da transação~~: resolvido no `GoogleAuth` (JWKS com timeout de 5 s, token conferido antes da transação).
+- [ ] Sem **rate limit** em `/auth/google` e `/auth/dev-login`.
+- [ ] Sem **refresh token**: o JWT vale 30 dias e depois o app pede o login com Google de novo. Se incomodar, criar `/auth/refresh`.
 - [ ] Sem endpoint de **estatísticas/histórico**: o app calcula tudo localmente a partir do SQLite. Só vira necessidade se quiserem dados consolidados no servidor.
 
 ### 4. Limpeza do repositório (precisa da aprovação do grupo)
 
-- [ ] **Pasta `taskflow-api/` (NestJS) aparece apagada no `git status` (125 arquivos), sem commit.** Não foi feito pelo trabalho desta etapa que eu saiba. Está **fora do commit** feito agora. Decidir: `git restore taskflow-api` (voltar) ou commitar a remoção. Se for removida, apagar também `prisma7.config.ts` e referências a Nest/Prisma no `README.md` e no `.env.example` (`DATABASE_URL`, `JWT_REFRESH_SECRET`, `GOOGLE_CLIENT_ID`, `APPLE_CLIENT_ID` já não são usados pelo Spring).
-- [ ] Atualizar o `README.md` (ainda descreve NestJS).
+- [ ] **Pasta `taskflow-api/` (NestJS):** está de volta no repositório (125 arquivos versionados). Decidir com o grupo se remove. Se remover, apagar também `prisma7.config.ts`, as referências a Nest/Prisma no `README.md` e `DATABASE_URL` no `.env.example`.
+- [ ] Atualizar o `README.md` (ainda descreve NestJS e o Supabase).
 - [ ] Abrir PR de `feature/backend-spring` para `main`.
 
 ## Como rodar (referência rápida)
 
 ```bash
-# Banco + API (a API precisa do .env da raiz: POSTGRES_*, JWT_SECRET, ENABLE_DEV_LOGIN, SUPABASE_*)
+# Banco + API (a API precisa do .env da raiz: POSTGRES_*, JWT_SECRET, ENABLE_DEV_LOGIN, GOOGLE_CLIENT_IDS)
 docker compose up -d
 
 # Testes do backend (Docker precisa estar ativo; usa Postgres descartável via Testcontainers)
@@ -68,8 +74,8 @@ cd taskflow-app && npx jest
 
 **Atenção à RAM:** a máquina anterior tinha ~8 GB e a última sessão foi encerrada por falta de memória. Antes de `./mvnw test`, pare a API (`docker stop taskflow-api`) e não rode Maven e Jest ao mesmo tempo. Use `npx jest --runInBand`.
 
-## Mapa rápido do que mudou nesta etapa
+## Mapa rápido do que mudou nesta etapa (30/10)
 
-- **API:** `taskflow-api-spring/src/main/java/com/taskflow/api/` → `session/` (novo), `auth/SupabaseAuth.java` e `auth/SupabaseLoginRequest.java` (novos), `task/Quadrant.java` (novo); migration `src/main/resources/db/migration/V2__task_due_date_quadrant.sql`.
-- **App:** `taskflow-app/database/api/` (`client.ts`, `mappers.ts`), `database/sync/sync.service.ts` (reescrito), `database/tasks.ts` (marca `pending`, guarda deletes em `pending_deletes`), `database/context/auth_context.tsx` (dispara o sync).
-- **Fluxo:** Google → Supabase (login) → `POST /auth/supabase-login` → JWT da API (vale 1 dia, renovado sozinho no 401) → `SyncService` envia pendentes e baixa o resto.
+- **API:** `auth/GoogleAuth.java` e `auth/GoogleLoginRequest.java` (novos), `POST /auth/google` em `AuthController`; saíram `SupabaseAuth` e `/auth/supabase-login`.
+- **App:** `database/services/auth.ts` (Google nativo), `database/api/client.ts` (sessão da API no SecureStore, 401 → login), `database/context/auth_context.tsx`; saiu `database/supabase/` e o código morto do Supabase.
+- **Fluxo:** Google (nativo) → `idToken` → `POST /auth/google` → JWT da API (30 dias, salvo no aparelho) → `SyncService` envia pendentes e baixa o resto.

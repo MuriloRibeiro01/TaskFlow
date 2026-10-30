@@ -1,5 +1,5 @@
-// Adapter de storage do Supabase sobre o SecureStore.
-// O SecureStore aceita no máximo ~2048 bytes por valor, e a sessão do Supabase costuma
+// Storage sobre o SecureStore para a sessão da API (token + usuário).
+// O SecureStore aceita no máximo ~2048 bytes por valor, e o token com o perfil pode
 // passar disso. Por isso o valor é dividido em pedaços:
 //   <chave>          → quantidade de pedaços
 //   <chave>.0 .. N   → pedaços do valor

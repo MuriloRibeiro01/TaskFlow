@@ -16,14 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthService {
 
-  static final Duration TOKEN_TTL = Duration.ofDays(1);
+  // Sem refresh token: ao expirar, o app pede o login com Google de novo.
+  static final Duration TOKEN_TTL = Duration.ofDays(30);
 
   private final UserRepository users;
   private final JwtEncoder encoder;
-  private final SupabaseAuth supabase;
 
-  AuthService(UserRepository users, JwtEncoder encoder, SupabaseAuth supabase) {
-    this.supabase = supabase;
+  AuthService(UserRepository users, JwtEncoder encoder) {
     this.users = users;
     this.encoder = encoder;
   }
@@ -34,8 +33,7 @@ public class AuthService {
   }
 
   @Transactional
-  public LoginResponse supabaseLogin(SupabaseLoginRequest request) {
-    SupabaseAuth.Identity id = supabase.verify(request.accessToken());
+  public LoginResponse login(GoogleAuth.Identity id) {
     return login(id.email(), id.displayName(), id.avatarUrl());
   }
 

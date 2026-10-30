@@ -1,7 +1,6 @@
 // sync/sync.service.ts
 import { db } from '../schemas';
-import { supabase } from '../supabase/supabase';
-import { api, ApiError } from '../api/client';
+import { api, ApiError, getSession } from '../api/client';
 import { isServerId, sessionBody, sessionFromApi, sessionPatchBody, taskBody, taskFromApi, taskPatchBody, toIso } from '../api/mappers';
 import { ConflictResolver } from './conflict.resolver';
 import { NetworkService } from '../services/network.service';
@@ -109,9 +108,9 @@ export class SyncService {
     return result;
   }
 
-  // O dono dos dados no SQLite é o usuário do Supabase; no servidor o dono vem do token.
+  // O dono dos dados no SQLite é o usuário logado na API; no servidor o dono vem do token.
   private async currentUserId(): Promise<string> {
-    const { data: { session } } = await supabase.auth.getSession();
+    const session = await getSession();
     if (!session) throw new Error('No session');
     return session.user.id;
   }

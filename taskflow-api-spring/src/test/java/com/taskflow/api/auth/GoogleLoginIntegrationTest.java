@@ -19,26 +19,26 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 
 @IntegrationTest
-class SupabaseLoginIntegrationTest {
+class GoogleLoginIntegrationTest {
 
   @Autowired MockMvc mvc;
-  @MockitoBean SupabaseAuth supabase;
+  @MockitoBean GoogleAuth google;
 
   private String login(String body) throws Exception {
-    return mvc.perform(post("/auth/supabase-login").contentType(MediaType.APPLICATION_JSON).content(body))
+    return mvc.perform(post("/auth/google").contentType(MediaType.APPLICATION_JSON).content(body))
         .andExpect(status().isOk())
         .andReturn().getResponse().getContentAsString();
   }
 
   @Test
-  void trocaOTokenDoSupabasePeloDoSpringSemDuplicarOUsuario() throws Exception {
-    String email = "Sb-" + UUID.randomUUID() + "@Taskflow.test";
-    when(supabase.verify("sb-token")).thenReturn(new SupabaseAuth.Identity(email, "Ana", "http://img"));
+  void trocaOIdTokenDoGooglePeloJwtDaApiSemDuplicarOUsuario() throws Exception {
+    String email = "Gg-" + UUID.randomUUID() + "@Taskflow.test";
+    when(google.verify("g-token")).thenReturn(new GoogleAuth.Identity(email, "Ana", "http://img"));
 
-    String first = login("{\"accessToken\":\"sb-token\"}");
-    String second = login("{\"accessToken\":\"sb-token\"}");
+    String first = login("{\"idToken\":\"g-token\"}");
+    String second = login("{\"idToken\":\"g-token\"}");
 
-    // mesmo usuário nas duas vezes, email em minúsculas, perfil do Supabase gravado
+    // mesmo usuário nas duas vezes, email em minúsculas, perfil do Google gravado
     org.assertj.core.api.Assertions.assertThat((Integer) JsonPath.read(second, "$.user.id"))
         .isEqualTo(JsonPath.<Integer>read(first, "$.user.id"));
     org.assertj.core.api.Assertions.assertThat((String) JsonPath.read(first, "$.user.email")).isEqualTo(email.toLowerCase());
@@ -51,15 +51,21 @@ class SupabaseLoginIntegrationTest {
 
   @Test
   void tokenRecusadoDa401() throws Exception {
-    when(supabase.verify(any())).thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+    when(google.verify(any())).thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED));
 
-    mvc.perform(post("/auth/supabase-login").contentType(MediaType.APPLICATION_JSON).content("{\"accessToken\":\"x\"}"))
+    mvc.perform(post("/auth/google").contentType(MediaType.APPLICATION_JSON).content("{\"idToken\":\"x\"}"))
         .andExpect(status().isUnauthorized());
   }
 
   @Test
   void corpoInvalidoDa400() throws Exception {
-    mvc.perform(post("/auth/supabase-login").contentType(MediaType.APPLICATION_JSON).content("{}"))
+    mvc.perform(post("/auth/google").contentType(MediaType.APPLICATION_JSON).content("{}"))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void supabaseLoginNaoExisteMais() throws Exception {
+    mvc.perform(post("/auth/supabase-login").contentType(MediaType.APPLICATION_JSON).content("{\"accessToken\":\"x\"}"))
+        .andExpect(status().is4xxClientError());
   }
 }
