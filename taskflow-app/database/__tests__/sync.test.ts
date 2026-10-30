@@ -4,12 +4,10 @@ import { SyncService } from '../sync/sync.service';
 import { api, ApiError } from '../api/client';
 import { db } from '../schemas';
 
-jest.mock('../supabase/supabase', () => ({
-    supabase: { auth: { getSession: jest.fn().mockResolvedValue({ data: { session: { user: { id: 'user-uuid' } } } }) } },
-}));
 jest.mock('../services/network.service', () => ({ NetworkService: class { isConnected = true; } }));
 jest.mock('../api/client', () => ({
     api: jest.fn(),
+    getSession: jest.fn().mockResolvedValue({ accessToken: 't', user: { id: '42' } }),
     ApiError: class ApiError extends Error { status: number; constructor(status: number) { super(String(status)); this.status = status; } },
 }));
 jest.mock('../schemas', () => ({
@@ -109,7 +107,7 @@ describe('download de tarefas', () => {
         await new SyncService().syncAll();
 
         expect(runSync).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO tasks'),
-            '7', 'user-uuid', 'Remota', null, 'medium', 1, 0, 'pending', null, null, null,
+            '7', '42', 'Remota', null, 'medium', 1, 0, 'pending', null, null, null,
             '2026-10-01T10:00:00Z', '2026-10-02T10:00:00Z');
     });
 
