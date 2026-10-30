@@ -1,6 +1,8 @@
 // sync/sync.service.ts
 import { db } from '../schemas';
 import { supabase } from '../supabase/supabase';
+import { api, ApiError } from '../api/client';
+import { isServerId, sessionBody, sessionFromApi, sessionPatchBody, taskBody, taskFromApi, taskPatchBody, toIso } from '../api/mappers';
 import { ConflictResolver } from './conflict.resolver';
 import { NetworkService } from '../services/network.service';
 
@@ -81,11 +83,16 @@ export class SyncService {
     try {
       console.log('🔄 Starting full sync...');
 
-      const tasksResult = await this.syncTasks();
+      const userId = await this.currentUserId();
+      this.requeueLegacyRemoteIds();
+
+      result.errors.push(...(await this.pushDeletes()));
+
+      const tasksResult = await this.syncTasks(userId);
       result.tasksSynced = tasksResult.synced;
       result.errors.push(...tasksResult.errors);
 
-      const sessionsResult = await this.syncPomodoroSessions();
+      const sessionsResult = await this.syncPomodoroSessions(userId);
       result.sessionsSynced = sessionsResult.synced;
       result.errors.push(...sessionsResult.errors);
 
@@ -102,7 +109,45 @@ export class SyncService {
     return result;
   }
 
-  private async syncTasks(): Promise<{ synced: number; errors: string[] }> {
+  // O dono dos dados no SQLite é o usuário do Supabase; no servidor o dono vem do token.
+  private async currentUserId(): Promise<string> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('No session');
+    return session.user.id;
+  }
+
+  // Registros que guardam um UUID do Supabase em remote_id nunca existiram na API: voltam para a fila.
+  private requeueLegacyRemoteIds(): void {
+    for (const table of ['tasks', 'pomodoro_sessions']) {
+      db.runSync(
+        `UPDATE ${table} SET remote_id = NULL, sync_status = 'pending'
+         WHERE remote_id IS NOT NULL AND remote_id GLOB '*[^0-9]*'`
+      );
+    }
+  }
+
+  // Apagados localmente (deleteTask guarda o id do servidor): apaga na API antes de baixar, senão voltariam.
+  private async pushDeletes(): Promise<string[]> {
+    const errors: string[] = [];
+    const rows = db.getAllSync(`SELECT kind, remote_id FROM pending_deletes`) as any[];
+
+    for (const { kind, remote_id } of rows) {
+      try {
+        try {
+          await api('DELETE', `/${kind === 'task' ? 'tasks' : 'sessions'}/${remote_id}`);
+        } catch (error) {
+          if (!(error instanceof ApiError && error.status === 404)) throw error;
+        }
+        db.runSync(`DELETE FROM pending_deletes WHERE kind = ? AND remote_id = ?`, kind, remote_id);
+      } catch (error) {
+        errors.push(`Failed to delete ${kind} ${remote_id}: ${error}`);
+      }
+    }
+
+    return errors;
+  }
+
+  private async syncTasks(userId: string): Promise<{ synced: number; errors: string[] }> {
     let synced = 0;
     const errors: string[] = [];
 
@@ -112,7 +157,7 @@ export class SyncService {
 
       for (const task of pendingTasks) {
         try {
-          await this.upsertTaskToSupabase(task);
+          await this.upsertTaskToApi(task);
           synced++;
         } catch (error) {
           errors.push(`Failed to upload task ${task.id}: ${error}`);
@@ -122,22 +167,25 @@ export class SyncService {
       const remoteTasks = await this.fetchRemoteTasks();
       console.log(`📥 Downloading ${remoteTasks.length} remote tasks...`);
 
-      for (const task of remoteTasks) {
+      for (const remote of remoteTasks) {
         try {
-          const localTask = this.getLocalTaskByRemoteId(task.id);
-          
-          if (localTask) {
-            if (localTask.sync_status === 'conflict') {
-              const resolvedTask = this.conflictResolver.resolveTaskConflict(localTask, task);
-              this.upsertTaskToLocal(resolvedTask, 'synced');
-            } else if (localTask.updated_at < task.updated_at) {
-              this.upsertTaskToLocal(task, 'synced');
+          const task = taskFromApi(remote);
+          const localTask = this.getLocalTaskByRemoteId(task.remote_id);
+
+          if (!localTask) {
+            this.insertTaskLocal(task, userId);
+          } else if (localTask.sync_status === 'conflict') {
+            // local mais novo: fica na fila e sobe no próximo sync
+            if (this.conflictResolver.resolveTaskConflict(localTask, task) === localTask) {
+              db.runSync(`UPDATE tasks SET sync_status = 'pending' WHERE id = ?`, localTask.id);
+            } else {
+              this.updateTaskLocal(localTask.id, task);
             }
-          } else {
-            this.upsertTaskToLocal(task, 'synced');
+          } else if (localTask.sync_status === 'synced' && this.isNewer(task.updated_at, localTask.updated_at)) {
+            this.updateTaskLocal(localTask.id, task);
           }
         } catch (error) {
-          errors.push(`Failed to download task ${task.id}: ${error}`);
+          errors.push(`Failed to download task ${remote.id}: ${error}`);
         }
       }
 
@@ -148,7 +196,7 @@ export class SyncService {
     return { synced, errors };
   }
 
-  private async syncPomodoroSessions(): Promise<{ synced: number; errors: string[] }> {
+  private async syncPomodoroSessions(userId: string): Promise<{ synced: number; errors: string[] }> {
     let synced = 0;
     const errors: string[] = [];
 
@@ -158,7 +206,7 @@ export class SyncService {
 
       for (const session of pendingSessions) {
         try {
-          await this.upsertSessionToSupabase(session);
+          await this.upsertSessionToApi(session);
           synced++;
         } catch (error) {
           errors.push(`Failed to upload session ${session.id}: ${error}`);
@@ -168,22 +216,24 @@ export class SyncService {
       const remoteSessions = await this.fetchRemoteSessions();
       console.log(`📥 Downloading ${remoteSessions.length} remote sessions...`);
 
-      for (const session of remoteSessions) {
+      for (const remote of remoteSessions) {
         try {
-          const localSession = this.getLocalSessionByRemoteId(session.id);
-          
-          if (localSession) {
-            if (localSession.sync_status === 'conflict') {
-              const resolvedSession = this.conflictResolver.resolveSessionConflict(localSession, session);
-              this.upsertSessionToLocal(resolvedSession, 'synced');
-            } else if (localSession.ended_at < session.ended_at) {
-              this.upsertSessionToLocal(session, 'synced');
+          const session = sessionFromApi(remote, this.localTaskId(remote.taskId));
+          const localSession = this.getLocalSessionByRemoteId(session.remote_id);
+
+          if (!localSession) {
+            this.insertSessionLocal(session, userId);
+          } else if (localSession.sync_status === 'synced') {
+            this.updateSessionLocal(localSession.id, session);
+          } else if (localSession.sync_status === 'conflict') {
+            if (this.conflictResolver.resolveSessionConflict(localSession, session) === localSession) {
+              db.runSync(`UPDATE pomodoro_sessions SET sync_status = 'pending' WHERE id = ?`, localSession.id);
+            } else {
+              this.updateSessionLocal(localSession.id, session);
             }
-          } else {
-            this.upsertSessionToLocal(session, 'synced');
           }
         } catch (error) {
-          errors.push(`Failed to download session ${session.id}: ${error}`);
+          errors.push(`Failed to download session ${remote.id}: ${error}`);
         }
       }
 
@@ -192,6 +242,13 @@ export class SyncService {
     }
 
     return { synced, errors };
+  }
+
+  // O SQLite e a API usam formatos de data diferentes; compara como instantes.
+  private isNewer(remoteDate?: string, localDate?: string): boolean {
+    const remote = toIso(remoteDate);
+    const local = toIso(localDate);
+    return !!remote && (!local || remote > local);
   }
 
   private getPendingTasks(): any[] {
@@ -220,46 +277,33 @@ export class SyncService {
     }
   }
 
-  private async upsertTaskToSupabase(task: any): Promise<void> {
-    const { data, error } = await supabase
-      .from('tasks')
-      .upsert({
-        id: task.remote_id || undefined,
-        user_id: task.user_id,
-        title: task.title,
-        description: task.description,
-        priority: task.priority,
-        estimated_pomodoros: task.estimated_pomodoros,
-        completed_pomodoros: task.completed_pomodoros || 0,
-        status: task.status,
-        due_date: task.due_date,
-        completed_at: task.completed_at,
-        updated_at: new Date().toISOString()
-      })
-      .select();
+  private async upsertTaskToApi(task: any): Promise<void> {
+    let remote;
 
-    if (error) throw error;
-
-    if (data && data[0]) {
-      db.runSync(
-        `UPDATE tasks 
-         SET remote_id = ?, sync_status = 'synced', updated_at = ? 
-         WHERE id = ?`,
-        data[0].id,
-        new Date().toISOString(),
-        task.id
-      );
+    if (isServerId(task.remote_id)) {
+      remote = await api('PATCH', `/tasks/${task.remote_id}`, taskPatchBody(task));
+    } else {
+      remote = await api('POST', '/tasks', taskBody(task));
+      // Guarda o id já agora: se o PATCH abaixo falhar, o próximo sync atualiza em vez de duplicar.
+      db.runSync(`UPDATE tasks SET remote_id = ? WHERE id = ?`, String(remote.id), task.id);
+      // A criação não aceita status nem pomodoros concluídos.
+      if (task.status !== 'pending' || (task.completed_pomodoros ?? 0) > 0) {
+        remote = await api('PATCH', `/tasks/${remote.id}`, taskPatchBody(task));
+      }
     }
+
+    db.runSync(
+      `UPDATE tasks 
+       SET remote_id = ?, sync_status = 'synced', updated_at = ? 
+       WHERE id = ?`,
+      String(remote.id),
+      remote.updatedAt,
+      task.id
+    );
   }
 
   private async fetchRemoteTasks(): Promise<any[]> {
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .order('updated_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    return api('GET', '/tasks');
   }
 
   private getLocalTaskByRemoteId(remoteId: string): any | null {
@@ -275,65 +319,80 @@ export class SyncService {
     }
   }
 
-  private upsertTaskToLocal(task: any, syncStatus: 'synced' | 'pending' | 'conflict' = 'synced'): void {
+  private insertTaskLocal(task: any, userId: string): void {
     db.runSync(
-      `INSERT OR REPLACE INTO tasks 
-       (id, remote_id, user_id, title, description, priority, 
+      `INSERT INTO tasks 
+       (remote_id, user_id, title, description, priority, 
         estimated_pomodoros, completed_pomodoros, status, 
-        due_date, completed_at, sync_status, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      task.id || null,
-      task.remote_id || task.id,
-      task.user_id,
+        due_date, completed_at, quadrant, created_at, updated_at, sync_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced')`,
+      task.remote_id,
+      userId,
       task.title,
       task.description,
       task.priority,
       task.estimated_pomodoros,
-      task.completed_pomodoros || 0,
+      task.completed_pomodoros,
       task.status,
       task.due_date,
       task.completed_at,
-      syncStatus,
-      new Date().toISOString()
+      task.quadrant,
+      task.created_at,
+      task.updated_at
     );
   }
 
-  private async upsertSessionToSupabase(session: any): Promise<void> {
-    const { data, error } = await supabase
-      .from('pomodoro_sessions')
-      .upsert({
-        id: session.remote_id || undefined,
-        task_id: session.task_id,
-        user_id: session.user_id,
-        started_at: session.started_at,
-        ended_at: session.ended_at,
-        duration_seconds: session.duration_seconds,
-        type: session.type,
-        status: session.status
-      })
-      .select();
+  private updateTaskLocal(localId: number, task: any): void {
+    db.runSync(
+      `UPDATE tasks SET title = ?, description = ?, priority = ?, 
+        estimated_pomodoros = ?, completed_pomodoros = ?, status = ?, 
+        due_date = ?, completed_at = ?, quadrant = ?, updated_at = ?, sync_status = 'synced'
+       WHERE id = ?`,
+      task.title,
+      task.description,
+      task.priority,
+      task.estimated_pomodoros,
+      task.completed_pomodoros,
+      task.status,
+      task.due_date,
+      task.completed_at,
+      task.quadrant,
+      task.updated_at,
+      localId
+    );
+  }
 
-    if (error) throw error;
+  // Id da tarefa no SQLite a partir do id dela na API (null se ainda não foi baixada).
+  private localTaskId(remoteTaskId?: number | null): number | null {
+    if (remoteTaskId == null) return null;
+    const row = db.getAllSync(`SELECT id FROM tasks WHERE remote_id = ?`, String(remoteTaskId))[0] as any;
+    return row ? row.id : null;
+  }
 
-    if (data && data[0]) {
-      db.runSync(
-        `UPDATE pomodoro_sessions 
-         SET remote_id = ?, sync_status = 'synced' 
-         WHERE id = ?`,
-        data[0].id,
-        session.id
-      );
-    }
+  // Id da tarefa na API; a sessão só sobe depois da tarefa dela.
+  private remoteTaskId(localTaskId?: number | null): number | undefined {
+    if (localTaskId == null) return undefined;
+    const row = db.getAllSync(`SELECT remote_id FROM tasks WHERE id = ?`, localTaskId)[0] as any;
+    if (!row || !isServerId(row.remote_id)) throw new Error(`Task ${localTaskId} not synced yet`);
+    return Number(row.remote_id);
+  }
+
+  private async upsertSessionToApi(session: any): Promise<void> {
+    const remote = isServerId(session.remote_id)
+      ? await api('PATCH', `/sessions/${session.remote_id}`, sessionPatchBody(session))
+      : await api('POST', '/sessions', sessionBody(session, this.remoteTaskId(session.task_id)));
+
+    db.runSync(
+      `UPDATE pomodoro_sessions 
+       SET remote_id = ?, sync_status = 'synced' 
+       WHERE id = ?`,
+      String(remote.id),
+      session.id
+    );
   }
 
   private async fetchRemoteSessions(): Promise<any[]> {
-    const { data, error } = await supabase
-      .from('pomodoro_sessions')
-      .select('*')
-      .order('ended_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
+    return api('GET', '/sessions');
   }
 
   private getLocalSessionByRemoteId(remoteId: string): any | null {
@@ -349,22 +408,36 @@ export class SyncService {
     }
   }
 
-  private upsertSessionToLocal(session: any, syncStatus: 'synced' | 'pending' | 'conflict' = 'synced'): void {
+  private insertSessionLocal(session: any, userId: string): void {
     db.runSync(
-      `INSERT OR REPLACE INTO pomodoro_sessions 
-       (id, remote_id, task_id, user_id, started_at, ended_at, 
+      `INSERT INTO pomodoro_sessions 
+       (remote_id, task_id, user_id, started_at, ended_at, 
         duration_seconds, type, status, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      session.id || null,
-      session.remote_id || session.id,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synced')`,
+      session.remote_id,
       session.task_id,
-      session.user_id,
+      userId,
+      session.started_at,
+      session.ended_at,
+      session.duration_seconds,
+      session.type,
+      session.status
+    );
+  }
+
+  private updateSessionLocal(localId: number, session: any): void {
+    db.runSync(
+      `UPDATE pomodoro_sessions 
+       SET task_id = ?, started_at = ?, ended_at = ?, duration_seconds = ?, 
+           type = ?, status = ?, sync_status = 'synced' 
+       WHERE id = ?`,
+      session.task_id,
       session.started_at,
       session.ended_at,
       session.duration_seconds,
       session.type,
       session.status,
-      syncStatus
+      localId
     );
   }
 
@@ -379,7 +452,7 @@ export class SyncService {
         throw new Error(`Task ${localId} not found`);
       }
 
-      await this.upsertTaskToSupabase(task[0]);
+      await this.upsertTaskToApi(task[0]);
     } catch (error) {
       console.error('Error syncing task:', error);
       throw error;
@@ -397,7 +470,7 @@ export class SyncService {
         throw new Error(`Session ${localId} not found`);
       }
 
-      await this.upsertSessionToSupabase(session[0]);
+      await this.upsertSessionToApi(session[0]);
     } catch (error) {
       console.error('Error syncing session:', error);
       throw error;

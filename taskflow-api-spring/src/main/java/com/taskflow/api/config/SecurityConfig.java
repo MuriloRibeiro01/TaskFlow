@@ -31,7 +31,7 @@ class SecurityConfig {
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(HttpMethod.GET, "/").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/auth/dev-login").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/auth/dev-login", "/auth/supabase-login").permitAll()
                     .requestMatchers("/error").permitAll()
                     .anyRequest().authenticated())
         .oauth2ResourceServer(

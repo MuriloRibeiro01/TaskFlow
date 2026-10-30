@@ -14,8 +14,6 @@ jest.mock('expo-web-browser', () => ({
     openAuthSessionAsync: jest.fn(),
 }));
 
-const mockUpsert = jest.fn();
-
 jest.mock('../supabase/supabase', () => ({
     supabase: {
         auth: {
@@ -23,7 +21,7 @@ jest.mock('../supabase/supabase', () => ({
             signInWithOAuth: jest.fn(),
             exchangeCodeForSession: jest.fn(),
         },
-        from: jest.fn(() => ({ upsert: mockUpsert })),
+        from: jest.fn(),
     },
 }));
 
@@ -57,7 +55,6 @@ beforeEach(() => {
         type: 'success',
         url: 'taskflow://auth/callback?code=abc123',
     });
-    mockUpsert.mockResolvedValue({ error: null });
 });
 
 describe('extractAuthParams', () => {
@@ -107,18 +104,12 @@ describe('userAuthentication', () => {
         expect(user).toEqual(usuario);
     });
 
-    it('Salva o usuário localmente uma única vez e faz upsert do perfil', async () => {
+    it('Salva o usuário localmente uma única vez e não grava perfil no Supabase (ele só autentica)', async () => {
         await userAuthentication();
 
         expect(saveLocalUser).toHaveBeenCalledTimes(1);
         expect(saveLocalUser).toHaveBeenCalledWith(usuario);
-        expect(supabase.from).toHaveBeenCalledWith('users');
-        expect(mockUpsert).toHaveBeenCalledWith({
-            id: 'user-123',
-            email: 'murilo@teste.com',
-            display_name: 'Murilo',
-            avatar_url: 'https://foto',
-        });
+        expect(supabase.from).not.toHaveBeenCalled();
     });
 
     it('Retorna null quando o usuário cancela/fecha o navegador', async () => {
@@ -154,14 +145,6 @@ describe('userAuthentication', () => {
 
         await expect(userAuthentication()).rejects.toThrow('invalid grant');
         expect(saveLocalUser).not.toHaveBeenCalled();
-    });
-
-    it('Não derruba o login quando o upsert do perfil falha', async () => {
-        mockUpsert.mockResolvedValue({ error: { message: 'permission denied for table users' } });
-
-        const user = await userAuthentication();
-
-        expect(user).toEqual(usuario);
     });
 
     it('Lança erro quando o Supabase não gera a URL de autenticação', async () => {

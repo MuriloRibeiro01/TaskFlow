@@ -27,4 +27,10 @@ class AuthController {
     if (!devLoginEnabled) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
     return auth.devLogin(request);
   }
+
+  // Troca o token do Supabase (login com Google no app) pelo JWT desta API.
+  @PostMapping("/supabase-login")
+  LoginResponse supabaseLogin(@Valid @RequestBody SupabaseLoginRequest request) {
+    return auth.supabaseLogin(request);
+  }
 }

@@ -1,5 +1,6 @@
 // Controla o comportamento da sessão
 import { supabase } from '../supabase/supabase';
+import { resetApiToken } from '../api/client';
 import { db } from '../schemas';
 import type { User } from '@supabase/supabase-js';
 
@@ -10,6 +11,7 @@ export async function getCurrentSession() {
 
 export async function logout() {
     await supabase.auth.signOut();
+    resetApiToken();
 }
 
 export async function saveLocalUser(user: User) {

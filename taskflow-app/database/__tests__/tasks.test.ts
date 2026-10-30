@@ -58,6 +58,18 @@ describe('DeleteTask', () => {
             'DELETE FROM tasks WHERE id = ?', [1]
         );
     });
+
+    it('Guarda o id da API antes de apagar, para o sync apagar lá também (senão o pull traria a tarefa de volta)', () => {
+        (db.runSync as jest.Mock).mockClear();
+
+        deleteTask(1);
+
+        const sqls = (db.runSync as jest.Mock).mock.calls.map(c => String(c[0]));
+        expect(sqls[0]).toContain('INSERT OR IGNORE INTO pending_deletes');
+        expect(sqls[0]).toContain("NOT GLOB '*[^0-9]*'");
+        expect((db.runSync as jest.Mock).mock.calls[0][1]).toEqual([1]);
+        expect(sqls[1]).toBe('DELETE FROM tasks WHERE id = ?');
+    });
 });
 
 describe('EditTask', () => {
@@ -72,7 +84,7 @@ describe('EditTask', () => {
         editTask(1, input);
 
         expect(db.runSync).toHaveBeenCalledWith(
-            'UPDATE tasks SET title = ?, description = ?, priority = ?, estimated_pomodoros = ?, due_date = ? WHERE id = ?',
+            "UPDATE tasks SET title = ?, description = ?, priority = ?, estimated_pomodoros = ?, due_date = ?, sync_status = 'pending', updated_at = datetime('now') WHERE id = ?",
             ['Jogar', 'Jogar Resident Evil 9', 'low', null, null, 1]
         );
 
@@ -90,7 +102,7 @@ describe('EditTask', () => {
         editTask(2, input);
 
         expect(db.runSync).toHaveBeenCalledWith(
-            'UPDATE tasks SET title = ?, description = ?, priority = ?, estimated_pomodoros = ?, due_date = ? WHERE id = ?',
+            "UPDATE tasks SET title = ?, description = ?, priority = ?, estimated_pomodoros = ?, due_date = ?, sync_status = 'pending', updated_at = datetime('now') WHERE id = ?",
             ['Estudar', 'Estudar TypeScript', 'medium', 3, '2026-10-15', 2]
         );
     });
@@ -102,7 +114,7 @@ describe('CompleteTask', () => {
         completeTask(1);
 
         expect(db.runSync).toHaveBeenCalledWith(
-            'UPDATE tasks SET status = ?, completed_at = datetime("now"), completed_pomodoros = ? WHERE id = ?', ['done', 4, 1]
+            'UPDATE tasks SET status = ?, completed_at = datetime("now"), completed_pomodoros = ?, sync_status = \'pending\', updated_at = datetime(\'now\') WHERE id = ?', ['done', 4, 1]
         );
 
     });
@@ -135,7 +147,7 @@ describe('ReOpenTask', () => {
         reopenTask(1);
         
         expect(db.runSync).toHaveBeenCalledWith(
-            'UPDATE tasks SET status = ? WHERE id = ?', ['pending', 1]
+            'UPDATE tasks SET status = ?, sync_status = \'pending\', updated_at = datetime(\'now\') WHERE id = ?', ['pending', 1]
         );
     })
 })
