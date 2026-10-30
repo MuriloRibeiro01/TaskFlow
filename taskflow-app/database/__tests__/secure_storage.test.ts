@@ -1,7 +1,7 @@
 // TDD do armazenamento da sessão no SecureStore com divisão em pedaços (limite ~2048 bytes)
 
 import * as SecureStore from 'expo-secure-store';
-import { MAX_CHUNK_BYTES, chunkedSecureStorage } from '../supabase/secure_storage';
+import { MAX_CHUNK_BYTES, chunkedSecureStorage } from '../api/secure_storage';
 
 jest.mock('expo-secure-store', () => {
     const store = new Map<string, string>();
