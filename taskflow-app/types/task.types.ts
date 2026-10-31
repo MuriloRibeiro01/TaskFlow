@@ -1,3 +1,5 @@
+import { Quadrant } from './prioritization.types';
+
 export interface Task {
     id: number;
     title: string;
@@ -7,6 +9,7 @@ export interface Task {
     estimated_pomodoros: number | null;
     completed_pomodoros: number | null;
     due_date: string | null;
+    quadrant?: Quadrant | null;
     created_at: string;
     completed_at: string | null;
     updated_at: string | null;
