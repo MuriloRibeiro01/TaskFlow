@@ -7,8 +7,11 @@ import { NetworkService } from '../services/network.service';
 
 export interface SyncResult {
   success: boolean;
+  // enviados para a API / mudanças aplicadas no celular vindas da API
   tasksSynced: number;
   sessionsSynced: number;
+  tasksDownloaded: number;
+  sessionsDownloaded: number;
   errors: string[];
 }
 
@@ -67,6 +70,8 @@ export class SyncService {
         success: false,
         tasksSynced: 0,
         sessionsSynced: 0,
+        tasksDownloaded: 0,
+        sessionsDownloaded: 0,
         errors: ['Sync already in progress']
       });
     }
@@ -89,6 +94,8 @@ export class SyncService {
         success: false,
         tasksSynced: 0,
         sessionsSynced: 0,
+        tasksDownloaded: 0,
+        sessionsDownloaded: 0,
         errors: ['No internet connection']
       };
     }
@@ -98,6 +105,8 @@ export class SyncService {
       success: true,
       tasksSynced: 0,
       sessionsSynced: 0,
+      tasksDownloaded: 0,
+      sessionsDownloaded: 0,
       errors: []
     };
 
@@ -112,13 +121,18 @@ export class SyncService {
 
       const tasksResult = await this.syncTasks(userId);
       result.tasksSynced = tasksResult.synced;
+      result.tasksDownloaded = tasksResult.downloaded;
       result.errors.push(...tasksResult.errors);
 
       const sessionsResult = await this.syncPomodoroSessions(userId);
       result.sessionsSynced = sessionsResult.synced;
+      result.sessionsDownloaded = sessionsResult.downloaded;
       result.errors.push(...sessionsResult.errors);
 
-      console.log(`✅ Sync completed: ${result.tasksSynced} tasks, ${result.sessionsSynced} sessions synced`);
+      console.log(
+        `✅ Sync completed: tarefas ${result.tasksSynced} enviadas / ${result.tasksDownloaded} baixadas, ` +
+        `sessões ${result.sessionsSynced} enviadas / ${result.sessionsDownloaded} baixadas`
+      );
 
     } catch (error) {
       result.success = false;
@@ -179,8 +193,9 @@ export class SyncService {
     return errors;
   }
 
-  private async syncTasks(userId: string): Promise<{ synced: number; errors: string[] }> {
+  private async syncTasks(userId: string): Promise<{ synced: number; downloaded: number; errors: string[] }> {
     let synced = 0;
+    let downloaded = 0;
     const errors: string[] = [];
 
     try {
@@ -206,15 +221,18 @@ export class SyncService {
 
           if (!localTask) {
             this.insertTaskLocal(task, userId);
+            downloaded++;
           } else if (localTask.sync_status === 'conflict') {
             // local mais novo: fica na fila e sobe no próximo sync
             if (this.conflictResolver.resolveTaskConflict(localTask, task) === localTask) {
               db.runSync(`UPDATE tasks SET sync_status = 'pending' WHERE id = ?`, localTask.id);
             } else {
               this.updateTaskLocal(localTask.id, task);
+              downloaded++;
             }
           } else if (localTask.sync_status === 'synced' && this.isNewer(task.updated_at, localTask.updated_at)) {
             this.updateTaskLocal(localTask.id, task);
+            downloaded++;
           }
         } catch (error) {
           errors.push(`Failed to download task ${remote.id}: ${error}`);
@@ -225,11 +243,12 @@ export class SyncService {
       errors.push(`Sync tasks failed: ${error}`);
     }
 
-    return { synced, errors };
+    return { synced, downloaded, errors };
   }
 
-  private async syncPomodoroSessions(userId: string): Promise<{ synced: number; errors: string[] }> {
+  private async syncPomodoroSessions(userId: string): Promise<{ synced: number; downloaded: number; errors: string[] }> {
     let synced = 0;
+    let downloaded = 0;
     const errors: string[] = [];
 
     try {
@@ -253,8 +272,10 @@ export class SyncService {
           const session = sessionFromApi(remote, this.localTaskId(remote.taskId));
           const localSession = this.getLocalSessionByRemoteId(session.remote_id);
 
+          // A sessão sincronizada é sempre regravada com a do servidor; só conta como baixada a nova.
           if (!localSession) {
             this.insertSessionLocal(session, userId);
+            downloaded++;
           } else if (localSession.sync_status === 'synced') {
             this.updateSessionLocal(localSession.id, session);
           } else if (localSession.sync_status === 'conflict') {
@@ -273,7 +294,7 @@ export class SyncService {
       errors.push(`Sync sessions failed: ${error}`);
     }
 
-    return { synced, errors };
+    return { synced, downloaded, errors };
   }
 
   // O SQLite e a API usam formatos de data diferentes; compara como instantes.
