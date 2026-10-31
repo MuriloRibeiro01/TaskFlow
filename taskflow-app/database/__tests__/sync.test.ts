@@ -233,3 +233,28 @@ describe('sync simultâneo', () => {
         expect(apiMock.mock.calls.filter(c => c[0] === 'GET' && c[1] === '/tasks')).toHaveLength(2);
     });
 });
+
+describe('contagem do resultado', () => {
+    it('Conta à parte o que foi enviado e o que mudou no celular vindo da API', async () => {
+        tabelas({ "FROM tasks \n         WHERE sync_status": [{ id: 1, remote_id: '8', title: 'Editada', status: 'pending', completed_pomodoros: 0 }] });
+        apiMock.mockImplementation(async (method: string, path: string) =>
+            method === 'GET' && path === '/tasks' ? [tarefaRemota] : { ...tarefaRemota, id: 8 });
+        const log = jest.spyOn(console, 'log').mockImplementation(() => {});
+
+        const result = await new SyncService().syncAll();
+
+        expect(result.tasksSynced).toBe(1);      // a editada, enviada
+        expect(result.tasksDownloaded).toBe(1);  // a remota nova, inserida no celular
+        expect(log).toHaveBeenCalledWith('✅ Sync completed: tarefas 1 enviadas / 1 baixadas, sessões 0 enviadas / 0 baixadas');
+        log.mockRestore();
+    });
+
+    it('Tarefa remota igual à do celular não conta como baixada', async () => {
+        tabelas({ 'FROM tasks WHERE remote_id': [{ id: 1, remote_id: '7', sync_status: 'synced', updated_at: '2026-10-02T10:00:00Z' }] });
+        apiMock.mockImplementation(async (_m: string, path: string) => (path === '/tasks' ? [tarefaRemota] : []));
+
+        const result = await new SyncService().syncAll();
+
+        expect(result.tasksDownloaded).toBe(0);
+    });
+});
