@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { AppState } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import { SyncService } from "../sync/sync.service";
+import { onLocalChange } from "../sync/sync_trigger";
 import { logout } from "../services/session";
 import { userAuthentication } from "../services/auth";
 import { getSession, onSessionExpired, type AuthUser } from "../api/client";
@@ -33,8 +34,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return onSessionExpired(() => setUser(null));
     }, []);
 
-    // Sincroniza com a API ao entrar, ao voltar para o app e ao reconectar. O SyncService ignora
-    // chamadas simultâneas e sem rede, e registra os erros no resultado (nunca lança).
+    // Sincroniza com a API ao entrar, ao voltar para o app, ao reconectar e logo depois de cada
+    // gravação local. O SyncService junta chamadas simultâneas, ignora as sem rede e registra os
+    // erros no resultado (nunca lança).
     useEffect(() => {
         if (!user) return;
 
@@ -42,10 +44,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sync();
         const appState = AppState.addEventListener("change", (state) => state === "active" && sync());
         const unsubscribeNet = NetInfo.addEventListener((state) => state.isConnected && sync());
+        const unsubscribeChanges = onLocalChange(sync);
 
         return () => {
             appState.remove();
             unsubscribeNet();
+            unsubscribeChanges();
         };
     }, [user?.id]);
 

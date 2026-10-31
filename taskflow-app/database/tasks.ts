@@ -3,6 +3,7 @@
 import * as SQLite from 'expo-sqlite';
 
 import { Task } from '@/types/task.types';
+import { notifyLocalChange } from './sync/sync_trigger';
 
 const db = SQLite.openDatabaseSync('taskflow.db');
 
@@ -22,6 +23,7 @@ export function createTask(input: {
     const tarefa = db.getFirstSync<Task>(
         'SELECT * FROM tasks WHERE id = ?', [resultado.lastInsertRowId]
     );
+    notifyLocalChange();
 
     return tarefa!;
 };
@@ -38,7 +40,7 @@ export function deleteTask(id: number) {
     db.runSync(
         'DELETE FROM tasks WHERE id = ?', [id]
     );
-
+    notifyLocalChange();
 }
 
 export function editTask(id: number, input: {
@@ -52,6 +54,7 @@ export function editTask(id: number, input: {
         "UPDATE tasks SET title = ?, description = ?, priority = ?, estimated_pomodoros = ?, due_date = ?, sync_status = 'pending', updated_at = datetime('now') WHERE id = ?",
         [input.title, input.description, input.priority, input.estimated_pomodoros ?? null, input.due_date ?? null, id]
     )
+    notifyLocalChange();
 }
 
 export function completeTask(id: number) {
@@ -65,6 +68,7 @@ export function completeTask(id: number) {
     db.runSync(
         'UPDATE tasks SET status = ?, completed_at = datetime("now"), completed_pomodoros = ?, sync_status = \'pending\', updated_at = datetime(\'now\') WHERE id = ?', ['done', countPomodoro, id]
     )
+    notifyLocalChange();
 }
 
 export function getAllTasks(userId: string): Task[] {
@@ -89,4 +93,5 @@ export function reopenTask(id: number) {
     db.runSync(
         'UPDATE tasks SET status = ?, sync_status = \'pending\', updated_at = datetime(\'now\') WHERE id = ?', ['pending', id]
     )
+    notifyLocalChange();
 }
