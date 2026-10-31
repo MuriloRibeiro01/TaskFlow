@@ -29,6 +29,7 @@ export function initDatabase() {
             due_date TEXT,
             completed_at DATETIME,
             sync_status TEXT CHECK(sync_status IN ('synced', 'pending', 'conflict')),
+            quadrant TEXT CHECK(quadrant IN ('fazer_agora','agendar','delegar','eliminar')),
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME,
             FOREIGN KEY (user_id) REFERENCES users(id)
@@ -41,6 +42,13 @@ export function initDatabase() {
     try {
         db.execSync(`ALTER TABLE tasks ADD COLUMN completed_pomodoros INTEGER DEFAULT 0`);
     } catch {}
+    try {
+        db.execSync(`ALTER TABLE tasks ADD COLUMN quadrant TEXT CHECK(quadrant IN ('fazer_agora','agendar','delegar','eliminar'))`);
+    } catch {
+        try {
+            db.execSync(`ALTER TABLE tasks ADD COLUMN quadrant TEXT`);
+        } catch {}
+    }
 
     db.execSync(`
         CREATE TABLE IF NOT EXISTS pomodoro_sessions (
@@ -57,6 +65,37 @@ export function initDatabase() {
             status TEXT CHECK (status IN ('completed', 'cancelled', 'interrupted')),
             sync_status TEXT CHECK(sync_status IN ('synced', 'pending', 'conflict')),
             FOREIGN KEY (task_id) REFERENCES tasks(id)
+        );
+    `);
+
+    // Apagados localmente que ainda faltam apagar na API (ver deleteTask e SyncService)
+    db.execSync(`
+        CREATE TABLE IF NOT EXISTS pending_deletes (
+            kind      TEXT NOT NULL CHECK(kind IN ('task', 'session')),
+            remote_id TEXT NOT NULL,
+            PRIMARY KEY (kind, remote_id)
+        );
+    `);
+
+    db.execSync(`
+        CREATE TABLE IF NOT EXISTS prioritization_sessions (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    TEXT NOT NULL,
+            status     TEXT CHECK(status IN ('in_progress','applied','discarded')) DEFAULT 'in_progress',
+            created_at TEXT DEFAULT (datetime('now')),
+            applied_at TEXT
+        );
+    `);
+
+    db.execSync(`
+        CREATE TABLE IF NOT EXISTS prioritization_decisions (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id         INTEGER NOT NULL REFERENCES prioritization_sessions(id),
+            task_id            INTEGER NOT NULL REFERENCES tasks(id),
+            suggested_quadrant TEXT,
+            chosen_quadrant    TEXT NOT NULL,
+            confidence         INTEGER,
+            created_at         TEXT DEFAULT (datetime('now'))
         );
     `);
 }
