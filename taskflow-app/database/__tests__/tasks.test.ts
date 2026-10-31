@@ -3,6 +3,9 @@
 import { completeTask, createTask, deleteTask, editTask, getAllTasks, getTaskById, listTasks, reopenTask } from "../tasks";
 
 import * as SQLite from 'expo-sqlite';
+import { notifyLocalChange } from '../sync/sync_trigger';
+
+jest.mock('../sync/sync_trigger', () => ({ notifyLocalChange: jest.fn() }));
 
 const db = SQLite.openDatabaseSync('taskflow.db');
 
@@ -151,3 +154,18 @@ describe('ReOpenTask', () => {
         );
     })
 })
+describe('Gatilho de sync', () => {
+    beforeEach(() => (notifyLocalChange as jest.Mock).mockClear());
+
+    it.each([
+        ['createTask', () => createTask({ title: 'x', description: '', priority: 'low', user_id: '7' })],
+        ['editTask', () => editTask(1, { title: 'x', description: '', priority: 'low' })],
+        ['completeTask', () => completeTask(1)],
+        ['reopenTask', () => reopenTask(1)],
+        ['deleteTask', () => deleteTask(1)],
+    ])('%s avisa que houve gravação local (o sync roda logo depois)', (_nome, gravar) => {
+        gravar();
+
+        expect(notifyLocalChange).toHaveBeenCalledTimes(1);
+    });
+});

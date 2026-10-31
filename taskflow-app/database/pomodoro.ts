@@ -1,6 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 
 import { PomodoroSession } from '@/types/pomodoro.type';
+import { notifyLocalChange } from './sync/sync_trigger';
 
 const db = SQLite.openDatabaseSync('taskflow.db');
 
@@ -109,6 +110,8 @@ export function recordCompletedPomodoro(input: {
             input.task_id,
         ]
     );
+
+    notifyLocalChange();
 
     return { completedPomodoros, taskCompleted };
 }

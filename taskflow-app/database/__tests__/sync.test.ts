@@ -188,3 +188,48 @@ describe('deleções e legado', () => {
         expect(sqls.some(s => s.includes('UPDATE pomodoro_sessions') && s.includes("GLOB '*[^0-9]*'"))).toBe(true);
     });
 });
+
+describe('dono dos dados', () => {
+    it('Só envia as pendentes do usuário logado (outra conta no mesmo aparelho fica de fora)', async () => {
+        await new SyncService().syncAll();
+
+        const pendentes = getAllSync.mock.calls.filter(c => String(c[0]).includes("sync_status IN ('pending', 'conflict')"));
+        expect(pendentes).toHaveLength(2);
+        for (const [sql, ...args] of pendentes) {
+            expect(sql).toContain('user_id = ?');
+            expect(args).toEqual(['42']);
+        }
+    });
+
+    it('Passa para o usuário logado as tarefas e sessões sem dono (criadas antes do login)', async () => {
+        await new SyncService().syncAll();
+
+        expect(runSync).toHaveBeenCalledWith(
+            "UPDATE tasks SET user_id = ?, sync_status = 'pending' WHERE user_id IS NULL OR user_id = ''", '42');
+        expect(runSync).toHaveBeenCalledWith(
+            "UPDATE pomodoro_sessions SET user_id = ?, sync_status = 'pending' WHERE user_id IS NULL OR user_id = ''", '42');
+    });
+});
+
+describe('sync simultâneo', () => {
+    it('Pedido durante um sync roda de novo quando ele acaba, em vez de se perder', async () => {
+        let liberar!: () => void;
+        const travado = new Promise<void>((resolve) => { liberar = resolve; });
+        let gets = 0;
+        apiMock.mockImplementation(async (method: string, path: string) => {
+            if (method === 'GET' && path === '/tasks' && ++gets === 1) await travado;
+            return [];
+        });
+        const service = new SyncService();
+
+        const primeiro = service.syncAll();
+        const segundo = await service.syncAll();
+        expect(segundo.errors).toEqual(['Sync already in progress']);
+
+        liberar();
+        await primeiro;
+        await service.idle();
+
+        expect(apiMock.mock.calls.filter(c => c[0] === 'GET' && c[1] === '/tasks')).toHaveLength(2);
+    });
+});

@@ -1,6 +1,9 @@
-import { createSession, completeSession, cancelSession, getSessionsByTask, countPomodorosConcluidos } from "../pomodoro";
+import { createSession, completeSession, cancelSession, getSessionsByTask, countPomodorosConcluidos, recordCompletedPomodoro } from "../pomodoro";
 
 import * as SQLite from 'expo-sqlite';
+import { notifyLocalChange } from '../sync/sync_trigger';
+
+jest.mock('../sync/sync_trigger', () => ({ notifyLocalChange: jest.fn() }));
 
 const db = SQLite.openDatabaseSync('taskflow.db');
 
@@ -67,3 +70,12 @@ describe('CountPomodorosConcluidos', () => {
         expect(totalPomodoros).toBeDefined();
     })
 })
+describe('RecordCompletedPomodoro', () => {
+    it('Avisa que houve gravação local (o sync roda logo depois)', () => {
+        (notifyLocalChange as jest.Mock).mockClear();
+
+        recordCompletedPomodoro({ task_id: 1, user_id: '7', duration_seconds: 1500 });
+
+        expect(notifyLocalChange).toHaveBeenCalledTimes(1);
+    });
+});
