@@ -1,8 +1,8 @@
 # TaskFlow — o que falta fazer
 
-Documento de continuação para retomar o trabalho em outra máquina. Estado em **30/10/2026**, branch `feature/backend-spring`.
+Documento de continuação para retomar o trabalho em outra máquina. Estado em **31/10/2026**, branch `feature/backend-spring`.
 
-Leia antes: [actions/2026-10-30-login-google-direto-api.md](actions/2026-10-30-login-google-direto-api.md) (última etapa), [actions/2026-10-27-ligacao-app-api-spring.md](actions/2026-10-27-ligacao-app-api-spring.md) (ligação app ↔ API) e [analises/analise-migracao-spring.md](analises/analise-migracao-spring.md) (decisões da migração).
+Leia antes: [actions/2026-10-31-login-validado-e-sync.md](actions/2026-10-31-login-validado-e-sync.md) (última etapa), [actions/2026-10-30-login-google-direto-api.md](actions/2026-10-30-login-google-direto-api.md) (login com Google na API), [actions/2026-10-27-ligacao-app-api-spring.md](actions/2026-10-27-ligacao-app-api-spring.md) (ligação app ↔ API) e [analises/analise-migracao-spring.md](analises/analise-migracao-spring.md) (decisões da migração).
 
 ## Decisões já tomadas (não rediscutir)
 
@@ -16,34 +16,35 @@ Leia antes: [actions/2026-10-30-login-google-direto-api.md](actions/2026-10-30-l
 | Parte | Situação |
 |---|---|
 | API Spring: auth (dev-login e Google), `/users/me`, CRUD de `/tasks`, CRUD de `/sessions` | Pronta. 59 testes (Testcontainers). Rodando no Docker desta máquina. |
-| Banco (Postgres 15 no Docker, porta 5435) | Na V2 (`due_date`, `quadrant`). Vazio (0 usuários). |
-| App: cliente HTTP, mappers, `SyncService` apontado para a API, gatilhos de sync | Escrito e testado em Jest. **Nunca rodou em aparelho/emulador.** |
-| Login com Google ponta a ponta (app → Google → API) | Escrito e testado em Jest/JUnit. **Não validado: faltam os Client IDs do Google.** |
+| Banco (Postgres 15 no Docker, porta 5435) | Na V2 (`due_date`, `quadrant`). Com 1 usuário e 1 tarefa vindos do app. |
+| App: cliente HTTP, mappers, `SyncService`, gatilhos de sync (inclusive logo após gravar), login obrigatório | 85 testes em Jest. Rodando no emulador (dev build `br.edu.ucb.taskflow`). |
+| Login com Google ponta a ponta (app → Google → API) | **Validado em 31/10:** login no emulador criou o usuário na API e a tarefa criada no app chegou ao Postgres. |
 
 ## Falta fazer (em ordem)
 
-### 1. Configurar o Google e validar de ponta a ponta (bloqueia todo o resto)
+### 1. Terminar a validação de ponta a ponta
 
-Já feito nesta máquina: `.env` da raiz, `EXPO_PUBLIC_API_URL=http://192.168.0.179:3000`, `docker compose up -d` (banco na V2, vazio).
+Feito em 31/10: Client IDs no Google Cloud (Web + Android `br.edu.ucb.taskflow`), `.env` da raiz e do app, dev build, login com Google e uma tarefa criada no app chegando ao Postgres.
 
-- [ ] **Google Cloud Console** (APIs e serviços → Credenciais), no mesmo projeto em que o Supabase tinha o provedor Google, se ainda existir:
-  - Tela de consentimento OAuth configurada (modo teste: adicione os emails do grupo como testadores).
-  - Client ID **Web application** → vai em `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (app) e em `GOOGLE_CLIENT_IDS` (raiz). O Web Client que o Supabase usava serve.
-  - Client ID **Android**: pacote `com.taskflow.app` + SHA-1 da chave de debug (`keytool -list -v -keystore taskflow-app/android/app/debug.keystore -alias androiddebugkey -storepass android -keypass android`). Não vai em `.env`, mas sem ele o Google recusa o app.
-  - (iOS, se for usar) Client ID iOS → `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` e também em `GOOGLE_CLIENT_IDS`; o plugin no `app.json` precisa do `iosUrlScheme`.
-- [ ] `docker compose up -d api` depois de preencher `GOOGLE_CLIENT_IDS` (sem ele `POST /auth/google` responde 503).
-- [ ] **Novo dev build** (entrou código nativo do Google Sign-In; não roda no Expo Go): `cd taskflow-app && npx expo prebuild --clean && npx expo run:android`.
-- [ ] Entrar com Google e conferir: criar tarefa → sync → linha em `tasks` no Postgres (`docker exec taskflow-postgres psql ...`).
-- [ ] Testar o ciclo completo: editar, concluir, apagar, concluir um pomodoro (gera sessão) e abrir o app em outro aparelho/reinstalar para ver o pull.
-- [ ] Se o aparelho não alcançar a API: liberar a porta 3000 no Firewall do Windows.
+- [ ] Conferir o sync **logo após gravar** no aparelho (criar uma tarefa e ver no Postgres em ~2 s, sem sair do app).
+- [ ] Testar o resto do ciclo: editar, concluir, apagar, concluir um pomodoro (gera sessão), aplicar uma priorização e reinstalar o app para ver o pull.
+- [ ] Cada integrante do grupo: adicionar o email como **usuário de teste** na tela de consentimento OAuth (modo teste) e rodar com o próprio `.env`.
+
+**Armadilhas já vistas** (para quem for configurar em outra máquina):
+- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` e `GOOGLE_CLIENT_IDS` levam o ID do cliente do tipo **Aplicativo da Web**, não o do Android nem o do iOS (os três começam com o mesmo número). ID errado → `DEVELOPER_ERROR`.
+- O Metro só lê o `.env` ao iniciar: depois de mudar o `.env` do app, `npx expo start --dev-client --clear`.
+- A API lê `GOOGLE_CLIENT_IDS` (plural); `GOOGLE_CLIENT_ID` é sobra do NestJS.
+- Ao trocar o pacote, o app antigo continua instalado com o mesmo nome e ícone: desinstale (`adb uninstall com.taskflow.app`).
+- Se o aparelho não alcançar a API: liberar a porta 3000 no Firewall do Windows.
 
 ### 2. Pendências de código no app
 
 - [ ] **Limpar campo no servidor:** o `PATCH` ignora `null`, então apagar descrição/prazo no app não apaga no servidor. Decidir: aceitar o limite ou mudar a API para distinguir "ausente" de "null".
 - [ ] **Apagado em outro aparelho não some neste.** Só o apagado local chega na API. Solução provável: coluna `deleted_at` na API (soft delete) ou comparar a lista remota com a local.
-- [ ] **Sync após gravar:** hoje só roda no login, ao voltar para o app e ao reconectar. Avaliar disparar após criar/editar.
+- [x] ~~Sync após gravar~~: feito em 31/10 (cada gravação agenda um sync ~1,5 s depois).
 - [ ] **`database/pomodoro.ts`:** `completeSession`/`cancelSession` usam a coluna `duration_minutes`, que não existe no schema, e `createSession` usa `type: 'break'`, que a API não aceita (`short_break`/`long_break`). O caminho real (`recordCompletedPomodoro`) está certo. Corrigir ou remover.
-- [ ] **Tarefas locais antigas:** as criadas com o usuário do Supabase (UUID em `user_id`) não aparecem para o usuário novo da API. Decidir se vale migrar (ex.: adotar no primeiro login as tarefas de outro `user_id`).
+- [ ] **Tarefas locais antigas do Supabase** (UUID em `user_id`) não aparecem para o usuário novo da API. As **sem dono** (`user_id` vazio) já são adotadas no sync desde 31/10; as com UUID, não. Só afeta aparelhos que usaram a versão com Supabase.
+- [ ] **Conflito entre aparelhos:** existe `ConflictResolver`, mas nada marca `sync_status = 'conflict'`. Na prática vale a última edição enviada.
 - [ ] `tsc --noEmit` tem 4 erros antigos em `app/` (rotas tipadas do expo-router: `/priorizar`, `/historico`, `/estatisticas` e um spread em `index.tsx`). Não vieram desta etapa.
 
 ### 3. Pendências de backend

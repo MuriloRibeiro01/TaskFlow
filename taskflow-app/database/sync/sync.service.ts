@@ -44,6 +44,9 @@ interface PomodoroSession {
 
 export class SyncService {
   private isSyncing = false;
+  // Pedido que chegou durante um sync: roda de novo no fim, senão a gravação feita no meio esperaria o próximo gatilho
+  private rerunRequested = false;
+  private running: Promise<SyncResult> | null = null;
   private conflictResolver: ConflictResolver;
   private networkService: NetworkService;
 
@@ -52,15 +55,34 @@ export class SyncService {
     this.networkService = new NetworkService();
   }
 
-  async syncAll(): Promise<SyncResult> {
+  // Resolve quando não há sync rodando nem agendado (inclusive a rodada extra).
+  async idle(): Promise<void> {
+    while (this.running) await this.running;
+  }
+
+  syncAll(): Promise<SyncResult> {
     if (this.isSyncing) {
-      return {
+      this.rerunRequested = true;
+      return Promise.resolve({
         success: false,
         tasksSynced: 0,
         sessionsSynced: 0,
         errors: ['Sync already in progress']
-      };
+      });
     }
+
+    const run = this.runSync().finally(() => {
+      if (this.running === run) this.running = null;
+      if (this.rerunRequested) {
+        this.rerunRequested = false;
+        this.syncAll();
+      }
+    });
+    this.running = run;
+    return run;
+  }
+
+  private async runSync(): Promise<SyncResult> {
 
     if (!this.networkService.isConnected) {
       return {
@@ -84,6 +106,7 @@ export class SyncService {
 
       const userId = await this.currentUserId();
       this.requeueLegacyRemoteIds();
+      this.adoptOrphans(userId);
 
       result.errors.push(...(await this.pushDeletes()));
 
@@ -125,6 +148,16 @@ export class SyncService {
     }
   }
 
+  // Criados antes de existir login (user_id vazio): passam a ser do usuário logado e sobem no sync.
+  private adoptOrphans(userId: string): void {
+    for (const table of ['tasks', 'pomodoro_sessions']) {
+      db.runSync(
+        `UPDATE ${table} SET user_id = ?, sync_status = 'pending' WHERE user_id IS NULL OR user_id = ''`,
+        userId
+      );
+    }
+  }
+
   // Apagados localmente (deleteTask guarda o id do servidor): apaga na API antes de baixar, senão voltariam.
   private async pushDeletes(): Promise<string[]> {
     const errors: string[] = [];
@@ -151,7 +184,7 @@ export class SyncService {
     const errors: string[] = [];
 
     try {
-      const pendingTasks = this.getPendingTasks();
+      const pendingTasks = this.getPendingTasks(userId);
       console.log(`📤 Uploading ${pendingTasks.length} pending tasks...`);
 
       for (const task of pendingTasks) {
@@ -200,7 +233,7 @@ export class SyncService {
     const errors: string[] = [];
 
     try {
-      const pendingSessions = this.getPendingSessions();
+      const pendingSessions = this.getPendingSessions(userId);
       console.log(`📤 Uploading ${pendingSessions.length} pending sessions...`);
 
       for (const session of pendingSessions) {
@@ -250,12 +283,13 @@ export class SyncService {
     return !!remote && (!local || remote > local);
   }
 
-  private getPendingTasks(): any[] {
+  private getPendingTasks(userId: string): any[] {
     try {
       return db.getAllSync(
         `SELECT * FROM tasks 
          WHERE sync_status IN ('pending', 'conflict') 
-         AND user_id IS NOT NULL`
+         AND user_id = ?`,
+        userId
       );
     } catch (error) {
       console.error('Error getting pending tasks:', error);
@@ -263,12 +297,13 @@ export class SyncService {
     }
   }
 
-  private getPendingSessions(): any[] {
+  private getPendingSessions(userId: string): any[] {
     try {
       return db.getAllSync(
         `SELECT * FROM pomodoro_sessions 
          WHERE sync_status IN ('pending', 'conflict') 
-         AND user_id IS NOT NULL`
+         AND user_id = ?`,
+        userId
       );
     } catch (error) {
       console.error('Error getting pending sessions:', error);
