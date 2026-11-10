@@ -1,32 +1,46 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+// app/_layout.tsx
+import {
+  BarlowCondensed_600SemiBold,
+  BarlowCondensed_700Bold,
+  BarlowCondensed_900Black_Italic,
+} from '@expo-google-fonts/barlow-condensed';
+import { DMSans_400Regular } from '@expo-google-fonts/dm-sans';
+import { IBMPlexMono_400Regular } from '@expo-google-fonts/ibm-plex-mono';
+import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AuthProvider } from '@/database/context/auth_context';
+import { RootStack } from '@/components/navigation/root-stack';
+import { ToastProvider } from '@/components/notifications/Toast';
 
 import { initDatabase } from '@/database/schemas';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useEffect } from 'react';
+initDatabase();
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const [fontsLoaded] = useFonts({
+    BarlowCondensed_700Bold,
+    BarlowCondensed_600SemiBold,
+    BarlowCondensed_900Black_Italic,
+    DMSans_400Regular,
+    IBMPlexMono_400Regular,
+  });
 
-  // Inicia o db
-  useEffect(() => {
-    initDatabase();
-  }, []);
+  if (!fontsLoaded) return null;
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ToastProvider>
+        <AuthProvider>
+          <RootStack />
+          <StatusBar style="light" />
+        </AuthProvider>
+      </ToastProvider>
+    </GestureHandlerRootView>
   );
 }

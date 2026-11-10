@@ -1,0 +1,95 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Priority {
+  low
+  medium
+  high
+}
+
+enum TaskStatus {
+  pending
+  in_progress
+  done
+}
+
+enum SyncStatus {
+  synced
+  pending
+  conflict
+}
+
+enum SessionType {
+  focus
+  short_break
+  long_break
+}
+
+enum SessionStatus {
+  completed
+  cancelled
+  interrupted
+}
+
+model User {
+  id          Int     @id @default(autoincrement())
+  email       String? @unique
+  displayName String? @map("display_name")
+  avatarUrl   String? @map("avatar_url")
+
+  tasks    Task[]
+  sessions PomodoroSession[]
+
+  @@map("users")
+}
+
+model Task {
+  id                 Int        @id @default(autoincrement())
+  userId             Int?       @map("user_id")
+  title              String
+  description        String?
+  priority           Priority   @default(medium)
+  estimatedPomodoros Int?       @map("estimated_pomodoros")
+  completedPomodoros Int        @default(0) @map("completed_pomodoros")
+  status             TaskStatus @default(pending)
+  completedAt        DateTime?  @map("completed_at")
+  syncStatus         SyncStatus @default(pending) @map("sync_status")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+
+  user     User?             @relation(fields: [userId], references: [id])
+  sessions PomodoroSession[]
+
+  @@index([userId])
+  @@map("tasks")
+}
+
+model PomodoroSession {
+  id              Int            @id @default(autoincrement())
+  taskId          Int?           @map("task_id")
+  userId          Int?           @map("user_id")
+  startedAt       DateTime?      @map("started_at")
+  endedAt         DateTime?      @map("ended_at")
+  durationSeconds Int?           @map("duration_seconds")
+  type            SessionType?
+  status          SessionStatus?
+  syncStatus      SyncStatus?    @map("sync_status")
+
+  task Task? @relation(fields: [taskId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+  @@index([userId])
+  @@map("pomodoro_sessions")
+}
