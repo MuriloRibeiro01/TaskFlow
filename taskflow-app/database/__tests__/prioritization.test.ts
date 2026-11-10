@@ -11,6 +11,9 @@ import { suggestPrioritization } from '../services/stub-prioritizer';
 import * as tasksModule from '../tasks';
 import { Task } from '@/types/task.types';
 import { QUADRANT_META, Quadrant } from '@/types/prioritization.types';
+import { notifyLocalChange } from '../sync/sync_trigger';
+
+jest.mock('../sync/sync_trigger', () => ({ notifyLocalChange: jest.fn() }));
 
 const db = SQLite.openDatabaseSync('taskflow.db');
 
@@ -198,15 +201,18 @@ describe('Prioritization Service', () => {
 
       applyPrioritization(5);
 
+      // marca pendente: sem isso a priorização nunca chegava à API
       expect(db.runSync).toHaveBeenCalledWith(
-        'UPDATE tasks SET quadrant = ?, priority = ? WHERE id = ?',
+        "UPDATE tasks SET quadrant = ?, priority = ?, sync_status = 'pending', updated_at = datetime('now') WHERE id = ?",
         ['fazer_agora', QUADRANT_META['fazer_agora'].priority, 10]
       );
 
       expect(db.runSync).toHaveBeenCalledWith(
-        'UPDATE tasks SET quadrant = ?, priority = ? WHERE id = ?',
+        "UPDATE tasks SET quadrant = ?, priority = ?, sync_status = 'pending', updated_at = datetime('now') WHERE id = ?",
         ['eliminar', QUADRANT_META['eliminar'].priority, 11]
       );
+
+      expect(notifyLocalChange).toHaveBeenCalledTimes(1);
 
       expect(db.runSync).toHaveBeenCalledWith(
         "UPDATE prioritization_sessions SET status = 'applied', applied_at = datetime('now') WHERE id = ?",

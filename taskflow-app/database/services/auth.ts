@@ -1,108 +1,34 @@
-import { makeRedirectUri } from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
-import { supabase } from '../supabase/supabase';
+// Login com Google direto na API Spring: o Google nativo devolve o ID token e a API troca pelo JWT dela.
+import { GoogleSignin, isSuccessResponse } from '@react-native-google-signin/google-signin';
+import { loginWithGoogle, type AuthUser } from '../api/client';
 import { saveLocalUser } from './session';
 
-WebBrowser.maybeCompleteAuthSession();
+let configured = false;
 
-// Lê os parâmetros do redirect OAuth, tanto da query (?code=...) quanto do fragmento (#error=...)
-export function extractAuthParams(url: string): Record<string, string> {
-    const params: Record<string, string> = {};
-    const [semFragmento, fragmento] = url.split('#');
-    const query = semFragmento.split('?')[1];
-
-    for (const parte of [query, fragmento]) {
-        if (!parte) continue;
-        new URLSearchParams(parte).forEach((valor, chave) => {
-            params[chave] = valor;
-        });
-    }
-
-    return params;
+function configure() {
+    const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    if (!webClientId) throw new Error('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID não definido');
+    if (configured) return;
+    // O idToken sai com aud = webClientId (no iOS, o iosClientId): a API precisa aceitar esses dois.
+    GoogleSignin.configure({ webClientId, iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID });
+    configured = true;
 }
 
-export async function userAuthentication() {
+export async function userAuthentication(): Promise<AuthUser | null> {
+    configure();
+    await GoogleSignin.hasPlayServices();
 
-    const redirectUri = makeRedirectUri({
-        scheme: 'taskflow',
-        path: 'auth/callback',
-    });
-
-    const { data: { session: sessaoAtual } } = await supabase.auth.getSession();
-    if (sessaoAtual) {
-        return sessaoAtual.user;
-    }
-
-    const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-            redirectTo: redirectUri,
-            skipBrowserRedirect: true,
-        },
-    });
-
-    if (error) {
-        throw error;
-    }
-
-    if (!data.url) {
-        throw new Error('URL de autenticação não foi gerada.');
-    }
-
-    const result = await WebBrowser.openAuthSessionAsync(
-        data.url,
-        redirectUri,
-        {
-            preferEphemeralSession: false,
-            createTask: true,
-        }
-    );
-
-    if (result.type !== 'success') {
+    const response = await GoogleSignin.signIn();
+    if (!isSuccessResponse(response)) {
         return null;
     }
 
-    const params = extractAuthParams(result.url);
-
-    if (params.error) {
-        throw new Error(params.error_description ?? params.error);
+    const { idToken } = response.data;
+    if (!idToken) {
+        throw new Error('O Google não devolveu o idToken (confira EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID).');
     }
 
-    if (!params.code) {
-        throw new Error('Código de autenticação ausente no retorno do OAuth.');
-    }
-
-    // Fluxo PKCE: troca o code pela sessão (usa o code_verifier salvo no signInWithOAuth)
-    const {
-        data: { session },
-        error: exchangeError,
-    } = await supabase.auth.exchangeCodeForSession(params.code);
-
-    if (exchangeError) {
-        throw exchangeError;
-    }
-
-    if (!session) {
-        throw new Error('Não foi possível criar a sessão após autenticação.');
-    }
-
-    const user = session.user;
-
-    await saveLocalUser(user);
-
-    // O perfil é complementar: se o upsert falhar, a sessão continua válida
-    const { error: profileError } = await supabase
-        .from('users')
-        .upsert({
-            id: user.id,
-            email: user.email,
-            display_name: user.user_metadata?.full_name,
-            avatar_url: user.user_metadata?.avatar_url,
-        });
-
-    if (profileError) {
-        console.error('Erro ao salvar o perfil do usuário:', profileError);
-    }
-
+    const user = await loginWithGoogle(idToken);
+    saveLocalUser(user);
     return user;
 }

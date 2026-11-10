@@ -1,0 +1,29 @@
+# Banco: SPRING_DATASOURCE_URL / _USERNAME / _PASSWORD (o compose injeta). Sem URL, a API não sobe.
+server:
+  port: ${PORT:3000}
+
+spring:
+  application:
+    name: taskflow-api
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Só confere se as entidades batem com as tabelas; NUNCA altera o schema.
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+      # As colunas são TIMESTAMP(3) sem fuso (criadas pelo Prisma), gravadas em UTC.
+      hibernate.type.preferred_instant_jdbc_type: TIMESTAMP
+  flyway:
+    # Banco que já existe (criado pelo Prisma): marca a V1 como aplicada sem rodar nada.
+    baseline-on-migrate: true
+    baseline-version: 1
+
+taskflow:
+  jwt-secret: ${JWT_SECRET:}
+  # Login sem prova de identidade: só com o valor exato "true". Nunca em produção.
+  dev-login-enabled: ${ENABLE_DEV_LOGIN:false}
+  # Client IDs OAuth do Google (Web, Android, iOS) separados por vírgula: só tokens emitidos para
+  # eles são aceitos. Sem nenhum, POST /auth/google responde 503.
+  google:
+    client-ids: ${GOOGLE_CLIENT_IDS:}

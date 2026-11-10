@@ -9,6 +9,7 @@ import {
   SuggestionResult,
 } from '@/types/prioritization.types';
 import { suggestPrioritization } from './stub-prioritizer';
+import { notifyLocalChange } from '../sync/sync_trigger';
 
 const db = SQLite.openDatabaseSync('taskflow.db');
 
@@ -103,7 +104,7 @@ export function applyPrioritization(sessionId: number): void {
   for (const decision of decisions) {
     const priority = QUADRANT_META[decision.chosenQuadrant].priority;
     db.runSync(
-      'UPDATE tasks SET quadrant = ?, priority = ? WHERE id = ?',
+      "UPDATE tasks SET quadrant = ?, priority = ?, sync_status = 'pending', updated_at = datetime('now') WHERE id = ?",
       [decision.chosenQuadrant, priority, decision.taskId]
     );
   }
@@ -112,6 +113,7 @@ export function applyPrioritization(sessionId: number): void {
     "UPDATE prioritization_sessions SET status = 'applied', applied_at = datetime('now') WHERE id = ?",
     [sessionId]
   );
+  notifyLocalChange();
 }
 
 export function discardPrioritization(sessionId: number): void {

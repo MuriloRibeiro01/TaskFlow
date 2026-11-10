@@ -1,18 +1,19 @@
 // Controla o comportamento da sessão
-import { supabase } from '../supabase/supabase';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { clearSession, getSession, type AuthUser } from '../api/client';
 import { db } from '../schemas';
-import type { User } from '@supabase/supabase-js';
 
 export async function getCurrentSession() {
-    const { data } = await supabase.auth.getSession();
-    return data.session;
+    return getSession();
 }
 
 export async function logout() {
-    await supabase.auth.signOut();
+    // Sem isso o Google entraria de novo na mesma conta sem perguntar
+    await GoogleSignin.signOut().catch(() => {});
+    await clearSession();
 }
 
-export async function saveLocalUser(user: User) {
+export function saveLocalUser(user: AuthUser) {
     db.runSync(
         `
             INSERT OR REPLACE INTO users
@@ -21,7 +22,7 @@ export async function saveLocalUser(user: User) {
         `,
         user.id,
         user.email ?? null,
-        user.user_metadata?.full_name ?? null,
-        user.user_metadata?.avatar_url ?? null
+        user.displayName ?? null,
+        user.avatarUrl ?? null
     );
 }

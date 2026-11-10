@@ -6,6 +6,11 @@ export class NetworkService {
   private listeners: (() => void)[] = [];
 
   constructor() {
+    // O listener só dispara no próximo evento; sem isto o primeiro sync logo após abrir o app acharia que está offline.
+    NetInfo.fetch().then((state) => {
+      this.isConnected = state.isConnected || false;
+    });
+
     NetInfo.addEventListener((state: NetInfoState) => {
       const wasConnected = this.isConnected;
       this.isConnected = state.isConnected || false;
