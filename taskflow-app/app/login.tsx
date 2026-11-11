@@ -19,7 +19,7 @@ const colors = {
 };
 
 export default function LoginScreen() {
-  const { signIn, isLoading } = useAuth();
+  const { signIn, signInAsGuest, isLoading } = useAuth();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // O redirecionamento após o login é feito pelo Stack.Protected em app/_layout.tsx
@@ -77,6 +77,14 @@ export default function LoginScreen() {
               <Text style={styles.appleButtonText}>Continuar com Apple</Text>
             </Pressable>
             <View style={styles.secondaryRule} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Entrar sem login"
+              style={({ pressed }) => [pressed && styles.buttonPressed]}
+              onPress={signInAsGuest}
+            >
+              <Text style={styles.guestText}>Entrar sem login</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -180,6 +188,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#D7D2C8',
     height: StyleSheet.hairlineWidth,
     marginTop: 16,
+  },
+  guestText: {
+    color: colors.grey,
+    fontFamily: 'IBMPlexMono_400Regular',
+    fontSize: 11,
+    lineHeight: 14,
+    marginTop: 16,
+    textAlign: 'center',
+    textDecorationLine: 'underline',
   },
   credits: {
     color: colors.grey,
