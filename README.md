@@ -45,6 +45,8 @@ cp .env.example .env
 
 Preencha os valores. O arquivo `.env` nunca deve ser versionado.
 
+Para a priorização com IA, defina `ANTHROPIC_API_KEY` (e, se quiser, `AI_MODEL`). Sem a chave a API continua funcionando e usa uma regra por prazo e prioridade (`source: "rules"`). A chave fica só no servidor, nunca no app.
+
 ### Backend (API + banco)
 
 ```bash
