@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Animated,
-  Modal,
   PanResponder,
   Pressable,
   ScrollView,
@@ -25,11 +24,16 @@ import { useAuth } from '@/database/context/auth_context';
 import { getAllTasks } from '@/database/tasks';
 import {
   applyPrioritization,
+  chooseAll,
+  chooseFinal,
   decideTask,
   discardPrioritization,
-  startPrioritization,
-  undoDecision,
+  getDecisionsForSession,
+  startSession,
 } from '@/database/services/prioritization.service';
+import { requestSuggestions, SuggestionsOutcome } from '@/database/services/ai-prioritizer';
+import { quadrantFromAnswers } from '@/database/services/prioritization.compare';
+import { CompareLists } from '@/components/prioritization/CompareLists';
 import { Task } from '@/types/task.types';
 import {
   PrioritizationDecision,
@@ -45,7 +49,7 @@ type PriorizacaoStep =
   | 'syncing'
   | 'generating'
   | 'card'
-  | 'quadrant_selector'
+  | 'compare'
   | 'result'
   | 'applied'
   | 'ai_failure';
@@ -75,10 +79,16 @@ export default function PriorizarModal() {
 
   const [step, setStep] = useState<PriorizacaoStep>('privacy_notice');
   const [session, setSession] = useState<PrioritizationSession | null>(null);
-  const [suggestions, setSuggestions] = useState<SuggestionResult[]>([]);
+  const [queue, setQueue] = useState<Task[]>([]); // tarefas pendentes a priorizar
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [question, setQuestion] = useState<'important' | 'urgent'>('important');
+  const [isImportant, setIsImportant] = useState(false);
+  const [answers, setAnswers] = useState<{ taskId: number; quadrant: Quadrant }[]>([]);
+  const [outcome, setOutcome] = useState<SuggestionsOutcome | null>(null);
   const [decisions, setDecisions] = useState<PrioritizationDecision[]>([]);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
+  // Pedido à IA disparado ao sair do aviso de privacidade; só é aguardado quando os swipes acabam.
+  const aiRequest = useRef<Promise<SuggestionsOutcome> | null>(null);
 
   // Skeleton pulse animation
   const skeletonOpacity = useRef(new Animated.Value(0.4)).current;
@@ -147,85 +157,97 @@ export default function PriorizarModal() {
   const iniciarPriorizacao = async () => {
     setStep('syncing');
     await new Promise((resolve) => setTimeout(resolve, 400));
+    const tasks = getAllTasks(userId).filter((t) => t.status !== 'done');
+    setAllTasks(getAllTasks(userId));
+
+    if (tasks.length === 0) {
+      Alert.alert('Sem tarefas pendentes', 'Você não possui tarefas pendentes para priorizar.');
+      router.back();
+      return;
+    }
+
+    setSession(startSession(userId));
+    setQueue(tasks);
+    setCurrentIndex(0);
+    setQuestion('important');
+    setAnswers([]);
+    setDecisions([]);
+    setOutcome(null);
+    aiRequest.current = requestSuggestions(tasks);
+    aiRequest.current.catch(() => {}); // o erro é tratado quando a promessa for aguardada
+    translateX.value = 0;
+    translateY.value = 0;
+    setStep('card');
+  };
+
+  // Espera a IA, grava as decisões (swipe + sugestão) e abre a comparação.
+  const finalizarSwipes = async (finalAnswers: { taskId: number; quadrant: Quadrant }[]) => {
+    if (!session) return;
     setStep('generating');
     try {
-      const tasks = getAllTasks(userId);
-      setAllTasks(tasks);
-      const { session: newSession, suggestions: newSuggestions } = await startPrioritization(userId);
-      setSession(newSession);
-      setSuggestions(newSuggestions);
-      setCurrentIndex(0);
-      setDecisions([]);
-
-      if (newSuggestions.length === 0) {
-        Alert.alert('Sem tarefas pendentes', 'Você não possui tarefas pendentes para priorizar.');
-        router.back();
-        return;
-      }
-
-      translateX.value = 0;
-      translateY.value = 0;
-      setStep('card');
+      const result = await aiRequest.current!;
+      finalAnswers.forEach((a) => {
+        const ai = result.suggestions.find((s) => s.taskId === a.taskId) ?? null;
+        decideTask(session.id, a.taskId, a.quadrant, ai);
+      });
+      setOutcome(result);
+      setDecisions(getDecisionsForSession(session.id));
+      setStep('compare');
     } catch {
       setStep('ai_failure');
     }
   };
 
-  // Accept decision
-  const aceitarDecisao = useCallback(
-    (chosenQuadrant: Quadrant) => {
-      if (!session || suggestions.length === 0) return;
-      const current = suggestions[currentIndex];
+  const tentarIaDeNovo = async () => {
+    aiRequest.current = requestSuggestions(queue);
+    aiRequest.current.catch(() => {});
+    await finalizarSwipes(answers);
+  };
+
+  // Responde a pergunta atual (sim/não). Na segunda pergunta fecha a tarefa.
+  const responder = useCallback(
+    (yes: boolean) => {
+      const current = queue[currentIndex];
       if (!current) return;
-
-      const decision = decideTask(
-        session.id,
-        current.taskId,
-        chosenQuadrant,
-        current.suggestedQuadrant,
-        current.confidence
-      );
-
-      setDecisions((prev) => [...prev, decision]);
       translateX.value = 0;
       translateY.value = 0;
 
-      if (currentIndex + 1 >= suggestions.length) {
-        setStep('result');
+      if (question === 'important') {
+        setIsImportant(yes);
+        setQuestion('urgent');
+        return;
+      }
+
+      const nextAnswers = [...answers, { taskId: current.id, quadrant: quadrantFromAnswers(isImportant, yes) }];
+      setAnswers(nextAnswers);
+      if (currentIndex + 1 >= queue.length) {
+        finalizarSwipes(nextAnswers);
       } else {
-        setCurrentIndex((prev) => prev + 1);
-        setStep('card');
+        setCurrentIndex(currentIndex + 1);
+        setQuestion('important');
       }
     },
-    [session, suggestions, currentIndex, translateX, translateY]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [queue, currentIndex, question, isImportant, answers, session]
   );
 
-  // Undo decision
+  // Desfazer: volta uma pergunta (ou uma tarefa, para a pergunta "urgente" dela).
   const handleUndo = () => {
-    if (!session || decisions.length === 0) return;
-    undoDecision(session.id);
-    setDecisions((prev) => prev.slice(0, -1));
-    setCurrentIndex((prev) => Math.max(0, prev - 1));
     translateX.value = 0;
     translateY.value = 0;
+    if (question === 'urgent') {
+      setQuestion('important');
+    } else if (answers.length > 0) {
+      const last = answers[answers.length - 1];
+      setAnswers(answers.slice(0, -1));
+      setCurrentIndex(currentIndex - 1);
+      setIsImportant(last.quadrant === 'fazer_agora' || last.quadrant === 'agendar');
+      setQuestion('urgent');
+    }
   };
 
-  // Pan Responder callbacks for swipe gestures
-  const handleSwipeRight = useCallback(() => {
-    if (suggestions[currentIndex]) {
-      aceitarDecisao(suggestions[currentIndex].suggestedQuadrant);
-    }
-  }, [suggestions, currentIndex, aceitarDecisao]);
-
-  const handleSwipeLeft = useCallback(() => {
-    translateX.value = 0;
-    translateY.value = 0;
-    setStep('quadrant_selector');
-  }, [translateX, translateY]);
-
-  const handleSwipeUp = useCallback(() => {
-    aceitarDecisao('fazer_agora');
-  }, [aceitarDecisao]);
+  const handleSwipeRight = useCallback(() => responder(true), [responder]);
+  const handleSwipeLeft = useCallback(() => responder(false), [responder]);
 
   const panResponder = useMemo(
     () =>
@@ -242,15 +264,13 @@ export default function PriorizarModal() {
             runOnJS(handleSwipeRight)();
           } else if (gesture.dx < -80) {
             runOnJS(handleSwipeLeft)();
-          } else if (gesture.dy < -80) {
-            runOnJS(handleSwipeUp)();
           } else {
             translateX.value = withSpring(0);
             translateY.value = withSpring(0);
           }
         },
       }),
-    [handleSwipeRight, handleSwipeLeft, handleSwipeUp, translateX, translateY]
+    [handleSwipeRight, handleSwipeLeft, translateX, translateY]
   );
 
   const cardAnimatedStyle = useAnimatedStyle(() => {
@@ -277,20 +297,13 @@ export default function PriorizarModal() {
     opacity: interpolate(translateX.value, [-80, -20], [1, 0], Extrapolation.CLAMP),
   }));
 
-  const upBadgeStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateY.value, [-80, -20], [1, 0], Extrapolation.CLAMP),
-  }));
-
   // Current suggestion data
-  const currentSuggestion = suggestions[currentIndex];
-  const currentTask = currentSuggestion
-    ? allTasks.find((t) => t.id === currentSuggestion.taskId)
-    : null;
+  const currentTask = queue[currentIndex] ?? null;
   const estimatedPomodoros = currentTask?.estimated_pomodoros ?? 1;
 
   // Header Subtitle for Result
   const adjustmentsCount = decisions.filter(
-    (d) => d.chosenQuadrant !== d.suggestedQuadrant
+    (d) => d.chosenQuadrant !== d.userQuadrant
   ).length;
   const resultSubtitle =
     adjustmentsCount === 0
@@ -397,7 +410,10 @@ export default function PriorizarModal() {
             Os campos enviados à IA do TaskFlow são:
           </Text>
           <Text style={styles.privacyBullets}>
-            · TÍTULO  · DESCRIÇÃO  · PRAZO  · ESTIMATIVA
+            · TÍTULO  · DESCRIÇÃO  · PRAZO  · ESTIMATIVA  · SUA ROTINA
+          </Text>
+          <Text style={styles.privacyNoticeText}>
+            Esses dados são enviados a um serviço de IA externo. Antes, você responde sozinho a duas perguntas por tarefa (é importante? é urgente?); só depois vê a sugestão da IA.
           </Text>
           <Text style={styles.privacyNoticeText}>
             Suas decisões são usadas apenas para personalizar suas sugestões. Nenhuma tarefa é alterada antes de você tocar em Aplicar.
@@ -438,23 +454,22 @@ export default function PriorizarModal() {
         </View>
       )}
 
-      {/* 4. card & quadrant_selector */}
-      {(step === 'card' || step === 'quadrant_selector') && currentSuggestion && (
+      {/* 4. card: swipe cego (duas perguntas por tarefa) */}
+      {step === 'card' && currentTask && (
         <ScrollView
           style={styles.cardScroll}
           contentContainerStyle={styles.cardScrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Progress Bar */}
           <View style={styles.progressContainer}>
             <View style={styles.progressHeaderRow}>
               <Text style={styles.progressText}>
-                TAREFA {currentIndex + 1} DE {suggestions.length}
+                TAREFA {currentIndex + 1} DE {queue.length} · PERGUNTA {question === 'important' ? 1 : 2} DE 2
               </Text>
-              {decisions.length > 0 && (
+              {(answers.length > 0 || question === 'urgent') && (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Desfazer última decisão"
+                  accessibilityLabel="Desfazer última resposta"
                   hitSlop={12}
                   onPress={handleUndo}
                 >
@@ -466,155 +481,86 @@ export default function PriorizarModal() {
               <View
                 style={[
                   styles.progressFill,
-                  {
-                    width: `${((currentIndex + 1) / suggestions.length) * 100}%`,
-                  },
+                  { width: `${((currentIndex + (question === 'urgent' ? 0.5 : 0)) / queue.length) * 100}%` },
                 ]}
               />
             </View>
           </View>
 
-          {/* Swipeable SuggestionCard */}
           <AnimatedReanimated.View
             {...panResponder.panHandlers}
             style={[styles.cardWrapper, cardAnimatedStyle]}
           >
-            {/* Stamp Badges */}
             <AnimatedReanimated.View style={[styles.stampAccept, acceptBadgeStyle]}>
-              <Text style={styles.stampAcceptText}>✓ ACEITAR</Text>
+              <Text style={styles.stampAcceptText}>✓ SIM</Text>
             </AnimatedReanimated.View>
             <AnimatedReanimated.View style={[styles.stampReject, rejectBadgeStyle]}>
-              <Text style={styles.stampRejectText}>✗ REJEITAR</Text>
-            </AnimatedReanimated.View>
-            <AnimatedReanimated.View style={[styles.stampUp, upBadgeStyle]}>
-              <Text style={styles.stampUpText}>↑ FAZER AGORA</Text>
+              <Text style={styles.stampRejectText}>✗ NÃO</Text>
             </AnimatedReanimated.View>
 
-            {/* Task info */}
             <View style={styles.cardHeader}>
               <Text style={styles.cardTaskId}>
-                T-{String(currentSuggestion.taskId).padStart(3, '0')}
+                T-{String(currentTask.id).padStart(3, '0')}
               </Text>
-              <PriorityBadge priority={currentTask?.priority ?? 'medium'} />
+              <PriorityBadge priority={currentTask.priority ?? 'medium'} />
             </View>
 
-            <Text style={styles.cardTaskTitle}>
-              {currentTask?.title ?? `Tarefa #${currentSuggestion.taskId}`}
-            </Text>
+            <Text style={styles.cardTaskTitle}>{currentTask.title}</Text>
 
             <Text style={styles.cardTaskMeta}>
               {estimatedPomodoros} pom · {estimatedPomodoros * 25} min
             </Text>
 
-            {/* AI Suggestion section */}
             <View style={styles.aiSection}>
-              <View style={styles.aiLabelRow}>
-                <Text style={styles.aiLabel}>SUGESTÃO DA IA</Text>
-                {currentIndex > 0 && (
-                  <Text style={styles.aiAdjustedText}>
-                    ● AJUSTADA PELAS SUAS DECISÕES
-                  </Text>
-                )}
-              </View>
-
               <Text style={styles.quadrantTitle}>
-                {QUADRANT_META[currentSuggestion.suggestedQuadrant].label}
+                {question === 'important' ? 'É importante?' : 'É urgente?'}
               </Text>
               <Text style={styles.quadrantAxes}>
-                {QUADRANT_META[currentSuggestion.suggestedQuadrant].axes}
-              </Text>
-
-              <Text style={styles.aiJustification}>
-                {currentSuggestion.justification}
-              </Text>
-
-              <Text style={styles.aiConfidence}>
-                CONFIANÇA: {currentSuggestion.confidence}%
+                ← NÃO · SIM →
               </Text>
             </View>
           </AnimatedReanimated.View>
 
-          {/* Action buttons */}
           <View style={styles.cardActions}>
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={question === 'important' ? 'Não é importante' : 'Não é urgente'}
               style={styles.rejectButton}
-              onPress={() => setStep('quadrant_selector')}
+              onPress={() => responder(false)}
             >
-              <Text style={styles.rejectButtonText}>← REJEITAR</Text>
+              <Text style={styles.rejectButtonText}>← NÃO</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              style={styles.nowButton}
-              onPress={() => aceitarDecisao('fazer_agora')}
-            >
-              <Text style={styles.nowButtonText}>↑ FAZER AGORA</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
+              accessibilityLabel={question === 'important' ? 'Sim, é importante' : 'Sim, é urgente'}
               style={styles.acceptButton}
-              onPress={() => aceitarDecisao(currentSuggestion.suggestedQuadrant)}
+              onPress={() => responder(true)}
             >
-              <Text style={styles.acceptButtonText}>ACEITAR →</Text>
+              <Text style={styles.acceptButtonText}>SIM →</Text>
             </Pressable>
           </View>
         </ScrollView>
       )}
 
-      {/* Quadrant Selector Bottom Sheet */}
-      <Modal
-        visible={step === 'quadrant_selector'}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setStep('card')}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>ESCOLHA O QUADRANTE</Text>
-            <Text style={styles.modalSubtitle}>
-              SUGESTÃO REJEITADA:{' '}
-              {currentSuggestion
-                ? QUADRANT_META[currentSuggestion.suggestedQuadrant].label.toUpperCase()
-                : ''}
-            </Text>
-
-            <View style={styles.quadrantGrid}>
-              {(['fazer_agora', 'agendar', 'delegar', 'eliminar'] as Quadrant[]).map(
-                (q) => {
-                  const isOriginal =
-                    currentSuggestion?.suggestedQuadrant === q;
-                  const meta = QUADRANT_META[q];
-
-                  return (
-                    <Pressable
-                      key={q}
-                      style={[
-                        styles.quadrantGridCell,
-                        isOriginal && styles.quadrantGridCellOriginal,
-                      ]}
-                      onPress={() => aceitarDecisao(q)}
-                    >
-                      {isOriginal && (
-                        <Text style={styles.originalBadge}>SUGESTÃO DA IA</Text>
-                      )}
-                      <Text style={styles.gridCellTitle}>{meta.label}</Text>
-                      <Text style={styles.gridCellAxes}>{meta.axes}</Text>
-                    </Pressable>
-                  );
-                }
-              )}
-            </View>
-
-            <Pressable
-              accessibilityRole="button"
-              style={styles.secondaryButton}
-              onPress={() => setStep('card')}
-            >
-              <Text style={styles.secondaryButtonText}>CANCELAR</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+      {/* 4b. compare: minha lista × lista da IA */}
+      {step === 'compare' && (
+        <CompareLists
+          decisions={decisions}
+          tasks={allTasks}
+          source={outcome?.source ?? 'rules'}
+          onChoose={(taskId, quadrant) => {
+            if (!session) return;
+            chooseFinal(session.id, taskId, quadrant);
+            setDecisions(getDecisionsForSession(session.id));
+          }}
+          onChooseAll={(side) => {
+            if (!session) return;
+            chooseAll(session.id, side);
+            setDecisions(getDecisionsForSession(session.id));
+          }}
+          onContinue={() => setStep('result')}
+        />
+      )}
 
       {/* 5. result & applied */}
       {(step === 'result' || step === 'applied') && (
@@ -673,10 +619,7 @@ export default function PriorizarModal() {
               <Pressable
                 accessibilityRole="button"
                 style={styles.secondaryButton}
-                onPress={() => {
-                  setCurrentIndex(0);
-                  setStep('card');
-                }}
+                onPress={() => setStep('compare')}
               >
                 <Text style={styles.secondaryButtonText}>REVISAR</Text>
               </Pressable>
@@ -720,7 +663,7 @@ export default function PriorizarModal() {
           <Pressable
             accessibilityRole="button"
             style={styles.primaryButton}
-            onPress={iniciarPriorizacao}
+            onPress={tentarIaDeNovo}
           >
             <Text style={styles.primaryButtonText}>TENTAR NOVAMENTE</Text>
           </Pressable>
