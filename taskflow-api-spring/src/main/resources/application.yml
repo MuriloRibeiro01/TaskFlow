@@ -27,3 +27,9 @@ taskflow:
   # eles são aceitos. Sem nenhum, POST /auth/google responde 503.
   google:
     client-ids: ${GOOGLE_CLIENT_IDS:}
+  # IA da priorização. Sem a chave a API continua respondendo, só com a regra por prazo e prioridade.
+  ai:
+    api-key: ${ANTHROPIC_API_KEY:}
+    model: ${AI_MODEL:claude-haiku-5-5}
+    url: https://api.anthropic.com/v1/messages
+    daily-limit: ${AI_DAILY_LIMIT:20}

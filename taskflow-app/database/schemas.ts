@@ -98,4 +98,10 @@ export function initDatabase() {
             created_at         TEXT DEFAULT (datetime('now'))
         );
     `);
+
+    for (const col of ['user_quadrant TEXT', 'ai_importance INTEGER', 'ai_urgency INTEGER', 'ai_justification TEXT']) {
+        try {
+            db.execSync(`ALTER TABLE prioritization_decisions ADD COLUMN ${col}`);
+        } catch {}
+    }
 }

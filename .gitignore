@@ -29,3 +29,7 @@ ios/
 
 # Maestri (agentes internos — nunca commitar)
 .maestri/
+
+# Python (taskflow-ml)
+__pycache__/
+.pytest_cache/
