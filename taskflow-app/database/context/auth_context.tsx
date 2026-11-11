@@ -6,13 +6,14 @@ import { SyncService } from "../sync/sync.service";
 import { onLocalChange } from "../sync/sync_trigger";
 import { logout } from "../services/session";
 import { userAuthentication } from "../services/auth";
-import { getSession, onSessionExpired, type AuthUser } from "../api/client";
+import { getSession, onSessionExpired, loginDev, type AuthUser } from "../api/client";
 
 interface AuthContextData {
     user: AuthUser | null;
     // true apenas enquanto a sessão salva é restaurada na abertura do app
     isLoading: boolean;
     signIn: () => Promise<void>;
+    signInAsGuest: () => Promise<void>;
     signOut: () => Promise<void>;
 }
 
@@ -60,13 +61,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    const signInAsGuest = async () => {
+        const user = await loginDev('guest@demo.com');
+        setUser(user);
+    };
+
     const signOut = async () => {
         await logout();
         setUser(null);
     };
 
     return (
-        <AuthContext.Provider value={{ user, isLoading: loading, signIn, signOut }}>
+        <AuthContext.Provider value={{ user, isLoading: loading, signIn, signInAsGuest, signOut }}>
             {children}
         </AuthContext.Provider>
     );
