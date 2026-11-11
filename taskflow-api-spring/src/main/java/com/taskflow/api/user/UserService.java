@@ -17,4 +17,12 @@ public class UserService {
   public User findMe(int id) {
     return users.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
   }
+
+  public User updateMe(int id, UpdateMeRequest request) {
+    User user = findMe(id);
+    if (request.routineText() != null) {
+      user.setRoutineText(request.routineText().isBlank() ? null : request.routineText());
+    }
+    return users.save(user);
+  }
 }
