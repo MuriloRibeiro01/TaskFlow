@@ -15,6 +15,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -30,13 +31,19 @@ public class PrioritizationService {
   private final UserRepository users;
   private final AiClient ai;
   private final DailyLimit limit;
-  private final RuleBasedScorer rules = new RuleBasedScorer();
+  private final RuleBasedScorer rules;
 
   PrioritizationService(TaskRepository tasks, UserRepository users, AiClient ai, DailyLimit limit) {
+    this(tasks, users, ai, limit, null);
+  }
+
+  @Autowired
+  PrioritizationService(TaskRepository tasks, UserRepository users, AiClient ai, DailyLimit limit, PriorityModel model) {
     this.tasks = tasks;
     this.users = users;
     this.ai = ai;
     this.limit = limit;
+    this.rules = new RuleBasedScorer(model);
   }
 
   public SuggestionsResponse suggest(int userId, List<Integer> taskIds) {
@@ -48,7 +55,8 @@ public class PrioritizationService {
     Instant now = Instant.now();
     List<Suggestion> result =
         selected.stream().map(t -> fromAi.containsKey(t.getId()) ? fromAi.get(t.getId()) : rules.score(t, now)).toList();
-    return new SuggestionsResponse(fromAi.isEmpty() ? "rules" : "ai", result);
+    String source = !fromAi.isEmpty() ? "ai" : selected.stream().anyMatch(rules::knows) ? "model" : "rules";
+    return new SuggestionsResponse(source, result);
   }
 
   /** Explícitas: todas têm que ser do usuário (404 se não). Sem lista: as 30 não concluídas mais recentes. */

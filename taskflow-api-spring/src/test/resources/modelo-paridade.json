@@ -1,0 +1,74 @@
+[
+ {
+  "texto": "Pagar boleto do plano de saúde",
+  "probabilidades": {
+   "high": 0.7029485367282357,
+   "low": 0.09513110777387881,
+   "medium": 0.20192035549788562
+  }
+ },
+ {
+  "texto": "Corrigir bug crítico em produção",
+  "probabilidades": {
+   "high": 0.4369354269355836,
+   "low": 0.23863823363215023,
+   "medium": 0.3244263394322661
+  }
+ },
+ {
+  "texto": "Comprar vela aromática",
+  "probabilidades": {
+   "high": 0.2136778609034016,
+   "low": 0.4541194867787323,
+   "medium": 0.33220265231786605
+  }
+ },
+ {
+  "texto": "Estudar para a prova de cálculo",
+  "probabilidades": {
+   "high": 0.6093618519268965,
+   "low": 0.07967864951949255,
+   "medium": 0.3109594985536109
+  }
+ },
+ {
+  "texto": "Marcar dentista",
+  "probabilidades": {
+   "high": 0.16441147277375237,
+   "low": 0.14106659622034637,
+   "medium": 0.6945219310059012
+  }
+ },
+ {
+  "texto": "Reunião de alinhamento semanal",
+  "probabilidades": {
+   "high": 0.21765145173112424,
+   "low": 0.1630141972258505,
+   "medium": 0.6193343510430253
+  }
+ },
+ {
+  "texto": "Churrasco com a turma",
+  "probabilidades": {
+   "high": 0.2027590130966359,
+   "low": 0.20559915656508446,
+   "medium": 0.5916418303382796
+  }
+ },
+ {
+  "texto": "ok",
+  "probabilidades": {
+   "high": 0.26547270554042407,
+   "low": 0.2831859277278072,
+   "medium": 0.45134136673176883
+  }
+ },
+ {
+  "texto": "Entregar o TCC à orientadora até sexta-feira",
+  "probabilidades": {
+   "high": 0.6067188339287284,
+   "low": 0.1451867768351173,
+   "medium": 0.24809438923615432
+  }
+ }
+]
