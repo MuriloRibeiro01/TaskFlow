@@ -1,11 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { Appearance, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Appearance, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
 import { ColorTheme, Fonts, Spacing } from '@/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/database/context/auth_context';
 import { getAllTasks } from '@/database/tasks';
+import { api } from '@/database/api/client';
 import { Task } from '@/types/task.types';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { useToast } from '@/components/notifications/Toast';
@@ -30,13 +31,33 @@ export default function Perfil() {
   const [breakDuration, setBreakDuration] = useState(5);
   const [soundOn, setSoundOn] = useState(true);
   const [vibOn, setVibOn] = useState(true);
+  const [routine, setRoutine] = useState('');
+  const [savedRoutine, setSavedRoutine] = useState('');
 
   useFocusEffect(
     useCallback(() => {
       const all = getAllTasks(user?.id ?? '');
       setTasks(all);
+      // Offline ou sem sessão: o campo fica vazio e o usuário pode tentar de novo ao voltar.
+      api<{ routineText?: string | null }>('GET', '/users/me')
+        .then((me) => {
+          setRoutine(me.routineText ?? '');
+          setSavedRoutine(me.routineText ?? '');
+        })
+        .catch(() => {});
     }, [user?.id])
   );
+
+  const saveRoutine = async () => {
+    if (routine === savedRoutine) return;
+    try {
+      await api('PATCH', '/users/me', { routineText: routine });
+      setSavedRoutine(routine);
+      showToast('Rotina salva', 'success');
+    } catch {
+      showToast('Não foi possível salvar a rotina. Tente de novo com internet.', 'error');
+    }
+  };
 
   const today = new Date().toISOString().substring(0, 10);
   const todayDone = tasks.filter(
@@ -134,6 +155,26 @@ export default function Perfil() {
               </Text>
             </View>
           </View>
+        </View>
+
+        {/* 2b2. Minha rotina (contexto para a priorização com IA) */}
+        <View>
+          <Text style={styles.sectionLabel}>MINHA ROTINA</Text>
+          <TextInput
+            accessibilityLabel="Minha rotina"
+            style={styles.routineInput}
+            multiline
+            maxLength={2000}
+            value={routine}
+            onChangeText={setRoutine}
+            onBlur={saveRoutine}
+            placeholder="Ex.: aulas de seg a sex à noite; estudo melhor de manhã"
+            placeholderTextColor={colors.cinza}
+          />
+          <Text style={styles.routineHint}>
+            Horários de aula ou trabalho e as melhores horas para estudar. Este texto é enviado ao
+            serviço de IA para sugerir a prioridade das tarefas.
+          </Text>
         </View>
 
         {/* 2c. Seção de navegação (sem label) */}
@@ -415,6 +456,21 @@ function createStyles(colors: ColorTheme) {
       letterSpacing: 0.14,
       color: colors.cinza,
       textTransform: 'uppercase',
+    },
+    routineInput: {
+      minHeight: 96,
+      padding: Spacing.sp3,
+      backgroundColor: colors.papel2,
+      color: colors.tinta,
+      fontFamily: Fonts.barlow,
+      fontSize: 15,
+      textAlignVertical: 'top',
+    },
+    routineHint: {
+      fontFamily: Fonts.mono,
+      fontSize: 9,
+      color: colors.cinza,
+      marginTop: Spacing.sp2,
     },
     sectionLabel: {
       fontFamily: Fonts.mono,

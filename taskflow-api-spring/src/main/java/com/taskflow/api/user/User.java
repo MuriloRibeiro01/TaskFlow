@@ -17,6 +17,7 @@ public class User {
   private String email;
   private String displayName;
   private String avatarUrl;
+  private String routineText;
 
   protected User() {}
 
@@ -30,4 +31,6 @@ public class User {
   public void setDisplayName(String displayName) { this.displayName = displayName; }
   public String getAvatarUrl() { return avatarUrl; }
   public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+  public String getRoutineText() { return routineText; }
+  public void setRoutineText(String routineText) { this.routineText = routineText; }
 }
