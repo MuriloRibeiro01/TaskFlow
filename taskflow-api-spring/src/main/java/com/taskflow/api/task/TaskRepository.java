@@ -15,6 +15,8 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
 
   List<Task> findByUserIdAndStatusOrderByCreatedAtDesc(Integer userId, TaskStatus status);
 
+  List<Task> findByUserIdAndStatusNotOrderByCreatedAtDesc(Integer userId, TaskStatus status);
+
   Optional<Task> findByIdAndUserId(Integer id, Integer userId);
 
   /** Confere o dono e apaga numa única query. */

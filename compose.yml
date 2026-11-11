@@ -36,6 +36,9 @@ services:
       ENABLE_DEV_LOGIN: ${ENABLE_DEV_LOGIN:-false}
       # Client IDs do Google (Web, Android, iOS) separados por vírgula; sem eles POST /auth/google responde 503
       GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:-}
+      # IA da priorização; sem a chave a API usa só a regra por prazo e prioridade
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-claude-haiku-5-5}
     depends_on:
       # O Flyway roda na inicialização: a API só sobe com o banco aceitando conexões.
       db:

@@ -1,6 +1,4 @@
 import * as SQLite from 'expo-sqlite';
-import { getAllTasks } from '@/database/tasks';
-import { Task } from '@/types/task.types';
 import {
   PrioritizationDecision,
   PrioritizationSession,
@@ -8,14 +6,11 @@ import {
   Quadrant,
   SuggestionResult,
 } from '@/types/prioritization.types';
-import { suggestPrioritization } from './stub-prioritizer';
 import { notifyLocalChange } from '../sync/sync_trigger';
 
 const db = SQLite.openDatabaseSync('taskflow.db');
 
-export async function startPrioritization(
-  userId: string
-): Promise<{ session: PrioritizationSession; suggestions: SuggestionResult[] }> {
+export function startSession(userId: string): PrioritizationSession {
   const result = db.runSync(
     'INSERT INTO prioritization_sessions (user_id, status) VALUES (?, ?)',
     [userId, 'in_progress']
@@ -28,51 +23,71 @@ export async function startPrioritization(
     [sessionId]
   );
 
-  const session: PrioritizationSession = {
+  return {
     id: row?.id ?? sessionId,
     userId: row?.user_id ?? userId,
     status: (row?.status as PrioritizationSession['status']) ?? 'in_progress',
     createdAt: row?.created_at ?? new Date().toISOString(),
     appliedAt: row?.applied_at ?? null,
   };
-
-  const tasks = getAllTasks(userId).filter((t: Task) => t.status !== 'done');
-  const suggestions = await suggestPrioritization(tasks);
-
-  return { session, suggestions };
 }
 
+function toDecision(row: any): PrioritizationDecision {
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    taskId: row.task_id,
+    userQuadrant: row.user_quadrant ?? null,
+    suggestedQuadrant: row.suggested_quadrant ?? null,
+    chosenQuadrant: row.chosen_quadrant,
+    confidence: row.confidence ?? null,
+    aiImportance: row.ai_importance ?? null,
+    aiUrgency: row.ai_urgency ?? null,
+    aiJustification: row.ai_justification ?? null,
+  };
+}
+
+// Swipe cego do usuário + sugestão da IA (se houver). A escolha final nasce igual ao usuário.
 export function decideTask(
   sessionId: number,
   taskId: number,
-  chosenQuadrant: Quadrant,
-  suggestedQuadrant: Quadrant | null,
-  confidence: number | null
+  userQuadrant: Quadrant,
+  ai: SuggestionResult | null
 ): PrioritizationDecision {
   const result = db.runSync(
-    'INSERT INTO prioritization_decisions (session_id, task_id, suggested_quadrant, chosen_quadrant, confidence) VALUES (?, ?, ?, ?, ?)',
-    [sessionId, taskId, suggestedQuadrant, chosenQuadrant, confidence]
+    `INSERT INTO prioritization_decisions
+      (session_id, task_id, user_quadrant, suggested_quadrant, chosen_quadrant, confidence, ai_importance, ai_urgency, ai_justification)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      sessionId, taskId, userQuadrant, ai?.suggestedQuadrant ?? null, userQuadrant,
+      ai?.confidence ?? null, ai?.importance ?? null, ai?.urgency ?? null, ai?.justification ?? null,
+    ]
   );
 
   const decisionId = Number(result.lastInsertRowId);
+  const row = db.getFirstSync<any>('SELECT * FROM prioritization_decisions WHERE id = ?', [decisionId]);
 
-  const row = db.getFirstSync<any>(
-    'SELECT * FROM prioritization_decisions WHERE id = ?',
-    [decisionId]
-  );
-
-  return {
-    id: row?.id ?? decisionId,
-    sessionId: row?.session_id ?? sessionId,
-    taskId: row?.task_id ?? taskId,
-    suggestedQuadrant:
-      (row?.suggested_quadrant !== undefined
-        ? row.suggested_quadrant
-        : suggestedQuadrant) ?? null,
-    chosenQuadrant: row?.chosen_quadrant ?? chosenQuadrant,
-    confidence:
-      (row?.confidence !== undefined ? row.confidence : confidence) ?? null,
+  return row ? toDecision(row) : {
+    id: decisionId, sessionId, taskId,
+    userQuadrant, suggestedQuadrant: ai?.suggestedQuadrant ?? null, chosenQuadrant: userQuadrant,
+    confidence: ai?.confidence ?? null, aiImportance: ai?.importance ?? null,
+    aiUrgency: ai?.urgency ?? null, aiJustification: ai?.justification ?? null,
   };
+}
+
+export function chooseFinal(sessionId: number, taskId: number, quadrant: Quadrant): void {
+  db.runSync(
+    'UPDATE prioritization_decisions SET chosen_quadrant = ? WHERE session_id = ? AND task_id = ?',
+    [quadrant, sessionId, taskId]
+  );
+}
+
+export function chooseAll(sessionId: number, side: 'user' | 'ai'): void {
+  const column = side === 'user' ? 'user_quadrant' : 'suggested_quadrant';
+  db.runSync(
+    `UPDATE prioritization_decisions SET chosen_quadrant = ${column} WHERE session_id = ? AND ${column} IS NOT NULL`,
+    [sessionId]
+  );
 }
 
 export function undoDecision(sessionId: number): void {
@@ -88,14 +103,7 @@ export function getDecisionsForSession(sessionId: number): PrioritizationDecisio
     [sessionId]
   );
 
-  return rows.map((row) => ({
-    id: row.id,
-    sessionId: row.session_id,
-    taskId: row.task_id,
-    suggestedQuadrant: row.suggested_quadrant ?? null,
-    chosenQuadrant: row.chosen_quadrant,
-    confidence: row.confidence ?? null,
-  }));
+  return rows.map(toDecision);
 }
 
 export function applyPrioritization(sessionId: number): void {
