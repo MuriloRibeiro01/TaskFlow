@@ -4,7 +4,7 @@ import { Task } from '@/types/task.types';
 import { Quadrant, SuggestionResult } from '@/types/prioritization.types';
 
 export interface SuggestionsOutcome {
-  source: 'ai' | 'rules';
+  source: 'ai' | 'model' | 'rules';
   suggestions: SuggestionResult[];
   skipped: number[]; // ids locais que não foram enviados (ainda sem id na API)
 }
@@ -15,7 +15,7 @@ export async function requestSuggestions(tasks: Task[]): Promise<SuggestionsOutc
   if (sendable.length === 0) return { source: 'rules', suggestions: [], skipped };
 
   const localByRemote = new Map(sendable.map((t) => [Number(t.remote_id), t.id]));
-  const res = await api<{ source: 'ai' | 'rules'; suggestions: any[] }>(
+  const res = await api<{ source: 'ai' | 'model' | 'rules'; suggestions: any[] }>(
     'POST',
     '/prioritization/suggestions',
     { taskIds: [...localByRemote.keys()] }
