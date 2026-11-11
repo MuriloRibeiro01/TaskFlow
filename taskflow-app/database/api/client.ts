@@ -59,6 +59,23 @@ export function onSessionExpired(listener: () => void) {
     return () => { expiredListeners.delete(listener); };
 }
 
+export async function loginDev(email: string): Promise<AuthUser> {
+    const res = await fetch(`${baseUrl()}/auth/dev-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+    });
+    if (!res.ok) throw new ApiError(res.status);
+    const { accessToken, user } = await res.json();
+    const nova: Session = {
+        accessToken,
+        user: { id: String(user.id), email: user.email, displayName: user.displayName ?? null, avatarUrl: user.avatarUrl ?? null },
+    };
+    await chunkedSecureStorage.setItem(SESSION_KEY, JSON.stringify(nova));
+    session = nova;
+    return nova.user;
+}
+
 export async function loginWithGoogle(idToken: string): Promise<AuthUser> {
     const res = await fetch(`${baseUrl()}/auth/google`, {
         method: 'POST',

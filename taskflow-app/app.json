@@ -11,7 +11,21 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "br.edu.ucb.taskflow"
+      "bundleIdentifier": "br.edu.ucb.taskflow",
+      "appleTeamId": "29HC4SA3R9",
+      "infoPlist": {
+        "GIDClientID": "547989278497-9lvgc9ht3mfu0k69mme8tqfcmjqj6ftv.apps.googleusercontent.com",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.547989278497-9lvgc9ht3mfu0k69mme8tqfcmjqj6ftv"
+            ]
+          }
+        ],
+        "LSApplicationQueriesSchemes": [
+          "com.googleusercontent.apps.547989278497-9lvgc9ht3mfu0k69mme8tqfcmjqj6ftv"
+        ]
+      }
     },
     "android": {
       "package": "br.edu.ucb.taskflow",
