@@ -196,4 +196,31 @@ class PrioritizationServiceTest {
     assertThatThrownBy(() -> service.suggest(USER, null)).isInstanceOf(ResponseStatusException.class);
     verify(ai, never()).score(any(), any());
   }
+
+  @Test
+  void semIaMasComModeloTreinadoOrigemEModel() {
+    PrioritizationService comModelo =
+        new PrioritizationService(repo, users, ai, limit, PriorityModel.fromClasspath("/modelo-prioridade.json", tools.jackson.databind.json.JsonMapper.builder().build()));
+    Task t = task(1, Priority.medium);
+    t.setTitle("Pagar boleto do plano de saúde");
+    pending(t);
+    when(ai.score(any(), any())).thenThrow(new IllegalStateException("sem chave"));
+
+    SuggestionsResponse r = comModelo.suggest(USER, null);
+
+    assertThat(r.source()).isEqualTo("model");
+    assertThat(r.suggestions()).hasSize(1);
+  }
+
+  @Test
+  void semIaETituloDesconhecidoOrigemContinuaRules() {
+    PrioritizationService comModelo =
+        new PrioritizationService(repo, users, ai, limit, PriorityModel.fromClasspath("/modelo-prioridade.json", tools.jackson.databind.json.JsonMapper.builder().build()));
+    Task t = task(1, Priority.medium);
+    t.setTitle("zzzqqq");
+    pending(t);
+    when(ai.score(any(), any())).thenThrow(new IllegalStateException("sem chave"));
+
+    assertThat(comModelo.suggest(USER, null).source()).isEqualTo("rules");
+  }
 }

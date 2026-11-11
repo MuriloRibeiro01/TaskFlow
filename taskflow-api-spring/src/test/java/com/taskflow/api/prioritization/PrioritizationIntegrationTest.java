@@ -82,7 +82,7 @@ class PrioritizationIntegrationTest {
 
     suggest(tokenA, "{}")
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.source").value("rules"))
+        .andExpect(jsonPath("$.source").value("model")) // "Estudar" é termo conhecido do modelo treinado
         .andExpect(jsonPath("$.suggestions[0].taskId").value(id));
   }
 

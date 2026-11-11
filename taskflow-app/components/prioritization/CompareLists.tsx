@@ -8,7 +8,7 @@ import { Task } from '@/types/task.types';
 interface Props {
   decisions: PrioritizationDecision[];
   tasks: Task[];
-  source: 'ai' | 'rules';
+  source: 'ai' | 'model' | 'rules';
   onChoose: (taskId: number, quadrant: Quadrant) => void;
   onChooseAll: (side: 'user' | 'ai') => void;
   onContinue: () => void;
@@ -39,6 +39,11 @@ export function CompareLists({ decisions, tasks, source, onChoose, onChooseAll, 
   return (
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <Text style={styles.rate}>{agreementRate}% DE CONCORDÂNCIA</Text>
+      {source === 'model' && (
+        <Text style={styles.notice}>
+          Esta sugestão vem do modelo treinado do TaskFlow (texto da tarefa, prazo e prioridade), não de uma IA externa.
+        </Text>
+      )}
       {source === 'rules' && (
         <Text style={styles.notice}>
           A IA estava indisponível; esta é uma estimativa por prazo e prioridade.
