@@ -10,6 +10,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.taskflow.api.IntegrationTest;
 import com.taskflow.api.user.UserRepository;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import javax.crypto.spec.SecretKeySpec;
@@ -18,7 +19,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
@@ -30,6 +33,7 @@ class AuthIntegrationTest {
   @Autowired MockMvc mvc;
   @Autowired UserRepository users;
   @Autowired JwtEncoder encoder;
+  @Autowired JwtDecoder decoder;
 
   private final String email = "it-" + UUID.randomUUID() + "@taskflow.test";
 
@@ -113,13 +117,36 @@ class AuthIntegrationTest {
   }
 
   @Test
-  void usersMeResponde404QuandoOUsuarioDoTokenFoiApagado() throws Exception {
+  void tokenDeUsuarioApagadoEhRecusadoComo401() throws Exception {
     String json = login("{\"email\":\"" + email + "\"}");
     String accessToken = JsonPath.read(json, "$.accessToken");
+    mvc.perform(get("/users/me").header("Authorization", "Bearer " + accessToken)).andExpect(status().isOk());
+
     users.deleteById(JsonPath.read(json, "$.user.id"));
 
     mvc.perform(get("/users/me").header("Authorization", "Bearer " + accessToken))
-        .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.statusCode").value(404));
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.statusCode").value(401));
+    mvc.perform(get("/tasks").header("Authorization", "Bearer " + accessToken)).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void tokenValeSeteDiasEVemComEmissorEDestinatario() throws Exception {
+    String accessToken = JsonPath.read(login("{\"email\":\"" + email + "\"}"), "$.accessToken");
+    Jwt jwt = decoder.decode(accessToken);
+    assertThat(Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt())).isEqualTo(Duration.ofDays(7));
+    assertThat(jwt.getClaimAsString("iss")).isEqualTo("taskflow-api");
+    assertThat(jwt.getAudience()).containsExactly("taskflow-app");
+  }
+
+  @Test
+  void tokenAssinadoComAChaveCertaMasSemEmissorEDestinatarioEhRecusado() throws Exception {
+    // é o formato dos tokens antigos (anteriores à fase 2 de segurança): precisam entrar de novo
+    Integer id = JsonPath.read(login("{\"email\":\"" + email + "\"}"), "$.user.id");
+    JwtClaimsSet claims =
+        JwtClaimsSet.builder().subject(String.valueOf(id)).issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(3600)).build();
+    String old =
+        encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
+    mvc.perform(get("/users/me").header("Authorization", "Bearer " + old)).andExpect(status().isUnauthorized());
   }
 }
