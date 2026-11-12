@@ -41,7 +41,12 @@ public class SessionService {
   @Transactional
   public PomodoroSession update(int userId, int id, UpdateSessionRequest request) {
     PomodoroSession s = sessions.findByIdAndUserId(id, userId).orElseThrow(SessionService::notFound);
-    if (request.endedAt() != null) s.setEndedAt(request.endedAt());
+    if (request.endedAt() != null) {
+      if (s.getStartedAt() != null && request.endedAt().isBefore(s.getStartedAt())) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "endedAt não pode ser antes de startedAt");
+      }
+      s.setEndedAt(request.endedAt());
+    }
     if (request.durationSeconds() != null) s.setDurationSeconds(request.durationSeconds());
     if (request.status() != null) s.setStatus(request.status());
     return sessions.save(s);
