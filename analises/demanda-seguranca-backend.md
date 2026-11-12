@@ -12,7 +12,7 @@ Regra do projeto: teste antes da implementação (TDD) e log em `actions/` ao co
 | 2 | B2 token: prazo, `iss`/`aud`, usuário apagado | feita |
 | 3 | B4 tetos de validação + B7 testes de isolamento (já existiam) | feita |
 | 4 | B3 limite de taxa + B8 cabeçalhos | feita |
-| 5 | B6 auditoria de dependências + B5 aviso de privacidade da IA | a fazer |
+| 5 | B6 auditoria de dependências + B5 aviso de privacidade da IA | feita |
 
 ## Prioridade alta
 
@@ -48,16 +48,14 @@ Regra do projeto: teste antes da implementação (TDD) e log em `actions/` ao co
 - **Fazer:** adicionar `@Max` e validar que `endedAt` não vem antes de `startedAt`. Combinar os mesmos limites com o banco (item D5 do outro documento).
 
 ### B5. Privacidade da priorização com IA
-- **Onde:** `prioritization/AnthropicAiClient.java`, tela de priorizar no app.
-- **Problema:** título, descrição e rotina do usuário vão para a Anthropic, e o usuário não é avisado.
-- **Fazer:**
-  - Aviso claro no app antes do primeiro uso e uma opção para desligar.
-  - Ver a política de retenção da API usada.
-  - O `DailyLimit` em memória zera ao reiniciar; se houver mais de uma instância da API, mover a contagem para o banco.
+- **Correção:** a primeira versão desta demanda dizia que o usuário não era avisado. Estava errado: `taskflow-app/app/priorizar.tsx` já mostra a tela "ANTES DE COMEÇAR" em toda priorização, lista os campos enviados (título, descrição, prazo, estimativa e rotina), diz que vão a um serviço de IA externo e tem o botão CANCELAR. Nada a mudar no app.
+- **Resta (não resolvido por código):** conferir a política de retenção do provedor da IA e, se o grupo quiser, citar o nome do provedor na tela. O `DailyLimit` em memória continua com o atalho registrado (zera ao reiniciar; mover para o banco se houver mais de uma instância).
 
 ### B6. Dependências sem auditoria
-- **Onde:** `pom.xml`, `taskflow-app/package.json`.
-- **Fazer:** rodar OWASP `dependency-check` (Maven) e `npm audit`, e ligar o Dependabot no GitHub. Anotar o que for encontrado e corrigir o crítico/alto.
+- **Feito em 2026-11-12:**
+  - **Maven:** consulta ao OSV de 95 dependências de runtime. Havia 11 avisos em `tomcat-embed-core` 11.0.24 (4 críticos, em DIGEST/FORM auth, HTTP/2 SNI e controle de acesso) e `jackson-databind`/`jackson-core` 3.1.5 (DoS). Corrigido com `tomcat.version=11.0.25` e `jackson-bom.version=3.1.7` no `pom.xml`. Remover quando o Spring Boot atualizar.
+  - **npm (`taskflow-app`):** `npm audit fix` baixou de 35 para 15 avisos (o crítico `shell-quote` saiu). Só o `package-lock.json` mudou; 12 suítes e 104 testes passam.
+- **Resta:** 4 avisos altos no app (`expo-router`, `decode-uri-component`, `query-string`) só se resolvem subindo `expo-router` para a versão 58, que é mudança maior e precisa de teste no aparelho. Os outros 11 são baixos ou moderados. Ligar o Dependabot no GitHub (é configuração do repositório).
 
 ## Prioridade baixa
 
