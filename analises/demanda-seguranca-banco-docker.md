@@ -17,6 +17,7 @@ Regra do projeto: o Flyway é o único dono do schema. Mudança de banco entra s
 ### D2. Sem HTTPS
 - **Problema:** o token de acesso viaja em HTTP puro.
 - **Fazer:** colocar um proxy reverso com TLS (Caddy ou nginx) como único serviço exposto; a API fica só na rede interna do compose. No mesmo proxy, limite de requisições por IP para `/auth/*` (combinar com B3 do outro documento: decidir se o limite fica aqui ou na aplicação) e o cabeçalho `Strict-Transport-Security`.
+- **Atualização (Fase 4 do backend):** a API já limita `POST /auth/*` a 20 por minuto por IP (variável `taskflow.auth-rate-limit.per-minute`). Atrás do proxy, o IP que a API enxerga é o do proxy; para ela ver o IP real, ligue `server.forward-headers-strategy=native` (só com o proxy confiável) e repasse `X-Forwarded-For`. Os outros cabeçalhos de segurança já saem da API; só o HSTS fica por conta do proxy.
 
 ### D3. A API usa o superusuário do Postgres
 - **Onde:** `compose.yml` passa `POSTGRES_USER` para `SPRING_DATASOURCE_USERNAME`.
