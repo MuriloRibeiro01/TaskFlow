@@ -1,9 +1,11 @@
 package com.taskflow.api.auth;
 
+import com.taskflow.api.config.JwtConfig;
 import com.taskflow.api.user.User;
 import com.taskflow.api.user.UserRepository;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -16,8 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthService {
 
-  // Sem refresh token: ao expirar, o app pede o login com Google de novo.
-  static final Duration TOKEN_TTL = Duration.ofDays(30);
+  // Sem refresh token: ao expirar, o app pede o login com Google de novo (a cada 7 dias).
+  static final Duration TOKEN_TTL = Duration.ofDays(7);
 
   private final UserRepository users;
   private final JwtEncoder encoder;
@@ -51,6 +53,8 @@ public class AuthService {
     Instant now = Instant.now();
     JwtClaimsSet claims =
         JwtClaimsSet.builder()
+            .issuer(JwtConfig.ISSUER)
+            .audience(List.of(JwtConfig.AUDIENCE))
             .subject(String.valueOf(user.getId()))
             .claim("email", user.getEmail())
             .issuedAt(now)
