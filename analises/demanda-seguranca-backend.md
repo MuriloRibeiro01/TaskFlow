@@ -10,7 +10,7 @@ Regra do projeto: teste antes da implementação (TDD) e log em `actions/` ao co
 |---|---|---|
 | 1 | B1 dev-login recusado com perfil `prod` | feita |
 | 2 | B2 token: prazo, `iss`/`aud`, usuário apagado | feita |
-| 3 | B4 tetos de validação + B7 testes de isolamento | a fazer |
+| 3 | B4 tetos de validação + B7 testes de isolamento (já existiam) | feita |
 | 4 | B3 limite de taxa + B8 cabeçalhos | a fazer |
 | 5 | B6 auditoria de dependências + B5 aviso de privacidade da IA | a fazer |
 
