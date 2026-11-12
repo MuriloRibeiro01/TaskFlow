@@ -3,6 +3,7 @@ package com.taskflow.api.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -148,5 +149,14 @@ class AuthIntegrationTest {
     String old =
         encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
     mvc.perform(get("/users/me").header("Authorization", "Bearer " + old)).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void respostasTrazemCabecalhosDeSeguranca() throws Exception {
+    mvc.perform(get("/"))
+        .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+        .andExpect(header().string("Referrer-Policy", "no-referrer"))
+        .andExpect(header().string("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'"))
+        .andExpect(header().string("X-Frame-Options", "DENY"));
   }
 }
