@@ -6,6 +6,7 @@ import {
     ApiError,
     clearSession,
     getSession,
+    loginDev,
     loginWithGoogle,
     onSessionExpired,
     resetSessionCache,
@@ -57,6 +58,28 @@ describe('loginWithGoogle', () => {
         fetchMock.mockResolvedValueOnce(resposta(401));
 
         await expect(loginWithGoogle('ruim')).rejects.toMatchObject({ status: 401 });
+        expect(storage.setItem).not.toHaveBeenCalled();
+    });
+});
+
+describe('loginDev', () => {
+    it('Entra pelo /auth/dev-login (só para demo local) e salva a sessão como no Google', async () => {
+        fetchMock.mockResolvedValueOnce(resposta(200, { accessToken: 'api-token', user: usuarioApi }));
+
+        const user = await loginDev('ana@gmail.com');
+
+        expect(fetchMock).toHaveBeenCalledWith('http://api/auth/dev-login', expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify({ email: 'ana@gmail.com' }),
+        }));
+        expect(user.id).toBe('7');
+        expect(storage.setItem).toHaveBeenCalledWith('taskflow.session', sessaoSalva);
+    });
+
+    it('Lança ApiError quando a API tem o dev-login desligado (404), sem salvar nada', async () => {
+        fetchMock.mockResolvedValueOnce(resposta(404));
+
+        await expect(loginDev('ana@gmail.com')).rejects.toMatchObject({ status: 404 });
         expect(storage.setItem).not.toHaveBeenCalled();
     });
 });

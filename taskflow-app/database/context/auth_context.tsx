@@ -4,9 +4,9 @@ import { AppState } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import { SyncService } from "../sync/sync.service";
 import { onLocalChange } from "../sync/sync_trigger";
-import { logout } from "../services/session";
+import { logout, saveLocalUser } from "../services/session";
 import { userAuthentication } from "../services/auth";
-import { getSession, onSessionExpired, loginDev, type AuthUser } from "../api/client";
+import { getSession, loginDev, onSessionExpired, type AuthUser } from "../api/client";
 
 interface AuthContextData {
     user: AuthUser | null;
@@ -28,7 +28,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         // Sessão salva no aparelho: abre logado mesmo offline
         getSession()
-            .then((session) => setUser(session?.user ?? null))
+            .then(async (session) => {
+                if (session) return setUser(session.user);
+                // Demo local: com EXPO_PUBLIC_DEV_LOGIN_EMAIL no .env, entra sozinho (sem tela de login)
+                const email = process.env.EXPO_PUBLIC_DEV_LOGIN_EMAIL;
+                if (!email) return;
+                const dev = await loginDev(email);
+                saveLocalUser(dev);
+                setUser(dev);
+            })
+            .catch(() => {})
             .finally(() => setLoading(false));
 
         // A API recusou o token (expirou): volta para o login
