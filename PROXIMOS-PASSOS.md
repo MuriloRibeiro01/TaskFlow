@@ -56,8 +56,8 @@ Feito em 31/10: Client IDs no Google Cloud (Web + Android `br.edu.ucb.taskflow`)
 
 ### 4. Limpeza do repositório (precisa da aprovação do grupo)
 
-- [ ] **Pasta `taskflow-api/` (NestJS):** está de volta no repositório (125 arquivos versionados). Decidir com o grupo se remove. Se remover, apagar também `prisma7.config.ts`, as referências a Nest/Prisma no `README.md` e `DATABASE_URL` no `.env.example`.
-- [ ] Atualizar o `README.md` (ainda descreve NestJS e o Supabase).
+- [x] **Pasta `taskflow-api/` (NestJS):** removida (commit `363167a`), junto com o `prisma7.config.ts`, as referências do `README.md`/`compose.yml` e o `DATABASE_URL` do `.env.example`. Falta o grupo ser avisado.
+- [x] `README.md` sem menção a NestJS nem ao Supabase.
 - [ ] Abrir PR de `feature/backend-spring` para `main`.
 
 ## Como rodar (referência rápida)

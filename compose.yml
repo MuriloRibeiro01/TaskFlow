@@ -19,7 +19,7 @@ services:
       timeout: 3s
       retries: 10
 
-  # API Spring Boot (a versão NestJS continua em ./taskflow-api, fora do compose)
+  # API Spring Boot
   api:
     build:
       context: ./taskflow-api-spring
