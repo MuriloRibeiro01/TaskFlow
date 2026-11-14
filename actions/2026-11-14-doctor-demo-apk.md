@@ -33,12 +33,12 @@ Arquivos: `scripts/doctor.mjs`, `scripts/doctor/lib.mjs` (+ `lib.test.mjs`), `sc
 - `npm run doctor`: 0 erros; avisos esperados (`ENABLE_DEV_LOGIN=true`, RAM baixa).
 - `npm run apk`: build de release em 32 min (4 arquiteturas), APK de 126 MB instalado no emulador.
 - `npm run demo`: rodou do início ao fim; app aberto **sem Metro**, build de release (sem `DEBUGGABLE`), sincronizou com a API por `http://` e manteve o login.
+- Login com Google no APK confirmado pelo usuário (sair e entrar de novo).
 - Sync logo após gravar confirmado no aparelho: tarefa concluída no app às 21:57:54 chegou ao servidor no mesmo segundo.
 - Testes: doctor 17, app 106, backend 127.
 
 ## Não testado
 
-- Login com Google **no APK** (precisa de alguém tocando no botão; a sessão anterior foi mantida).
 - `npm run demo:dev` de ponta a ponta (as partes dele foram testadas separadamente nas sessões anteriores).
 - Celular físico e outro Wi-Fi (o `--fix` do IP foi testado só nos testes unitários).
 - macOS (o doctor foi escrito para funcionar, mas só rodou no Windows).
