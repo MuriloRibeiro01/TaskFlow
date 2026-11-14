@@ -1,8 +1,10 @@
 # TaskFlow — o que falta fazer
 
-Documento de continuação para retomar o trabalho em outra máquina. Estado em **31/10/2026**, branch `feature/backend-spring`.
+Documento de continuação para retomar o trabalho em outra máquina. Estado em **14/11/2026**, branch `develop`.
 
-Leia antes: [actions/2026-10-31-login-validado-e-sync.md](actions/2026-10-31-login-validado-e-sync.md) (última etapa), [actions/2026-10-30-login-google-direto-api.md](actions/2026-10-30-login-google-direto-api.md) (login com Google na API), [actions/2026-10-27-ligacao-app-api-spring.md](actions/2026-10-27-ligacao-app-api-spring.md) (ligação app ↔ API) e [analises/analise-migracao-spring.md](analises/analise-migracao-spring.md) (decisões da migração).
+**Para rodar:** `npm run doctor` (confere tudo) e `npm run demo` (sobe e abre o app). Roteiro do dia da apresentação no `README.md`.
+
+Leia antes: [actions/2026-11-14-doctor-demo-apk.md](actions/2026-11-14-doctor-demo-apk.md) (última etapa), [actions/2026-10-31-login-validado-e-sync.md](actions/2026-10-31-login-validado-e-sync.md), [actions/2026-10-30-login-google-direto-api.md](actions/2026-10-30-login-google-direto-api.md) (login com Google na API), [actions/2026-10-27-ligacao-app-api-spring.md](actions/2026-10-27-ligacao-app-api-spring.md) (ligação app ↔ API) e [analises/analise-migracao-spring.md](analises/analise-migracao-spring.md) (decisões da migração).
 
 ## Decisões já tomadas (não rediscutir)
 
@@ -26,7 +28,8 @@ Leia antes: [actions/2026-10-31-login-validado-e-sync.md](actions/2026-10-31-log
 
 Feito em 31/10: Client IDs no Google Cloud (Web + Android `br.edu.ucb.taskflow`), `.env` da raiz e do app, dev build, login com Google e uma tarefa criada no app chegando ao Postgres.
 
-- [ ] Conferir o sync **logo após gravar** no aparelho (criar uma tarefa e ver no Postgres em ~2 s, sem sair do app).
+- [x] ~~Sync logo após gravar no aparelho~~: confirmado em 14/11.
+- [ ] Entrar com Google **no APK de apresentação** (`npm run demo`) uma vez antes do dia.
 - [ ] Testar o resto do ciclo: editar, concluir, apagar, concluir um pomodoro (gera sessão), aplicar uma priorização e reinstalar o app para ver o pull.
 - [ ] Cada integrante do grupo: adicionar o email como **usuário de teste** na tela de consentimento OAuth (modo teste) e rodar com o próprio `.env`.
 

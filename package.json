@@ -1,4 +1,11 @@
 {
+  "scripts": {
+    "doctor": "node scripts/doctor.mjs",
+    "demo": "node scripts/demo.mjs",
+    "demo:dev": "node scripts/demo.mjs --dev",
+    "apk": "node scripts/apk.mjs",
+    "test:doctor": "node --test \"scripts/**/*.test.mjs\""
+  },
   "devDependencies": {
     "@types/jest": "^30.0.0"
   },
