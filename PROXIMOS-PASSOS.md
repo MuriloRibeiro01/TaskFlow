@@ -29,7 +29,7 @@ Leia antes: [actions/2026-11-14-doctor-demo-apk.md](actions/2026-11-14-doctor-de
 Feito em 31/10: Client IDs no Google Cloud (Web + Android `br.edu.ucb.taskflow`), `.env` da raiz e do app, dev build, login com Google e uma tarefa criada no app chegando ao Postgres.
 
 - [x] ~~Sync logo após gravar no aparelho~~: confirmado em 14/11.
-- [ ] Entrar com Google **no APK de apresentação** (`npm run demo`) uma vez antes do dia.
+- [x] ~~Login com Google no APK de apresentação~~: confirmado em 14/11.
 - [ ] Testar o resto do ciclo: editar, concluir, apagar, concluir um pomodoro (gera sessão), aplicar uma priorização e reinstalar o app para ver o pull.
 - [ ] Cada integrante do grupo: adicionar o email como **usuário de teste** na tela de consentimento OAuth (modo teste) e rodar com o próprio `.env`.
 
