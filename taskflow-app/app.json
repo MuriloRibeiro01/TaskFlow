@@ -11,21 +11,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "br.edu.ucb.taskflow",
-      "appleTeamId": "29HC4SA3R9",
-      "infoPlist": {
-        "GIDClientID": "547989278497-9lvgc9ht3mfu0k69mme8tqfcmjqj6ftv.apps.googleusercontent.com",
-        "CFBundleURLTypes": [
-          {
-            "CFBundleURLSchemes": [
-              "com.googleusercontent.apps.547989278497-9lvgc9ht3mfu0k69mme8tqfcmjqj6ftv"
-            ]
-          }
-        ],
-        "LSApplicationQueriesSchemes": [
-          "com.googleusercontent.apps.547989278497-9lvgc9ht3mfu0k69mme8tqfcmjqj6ftv"
-        ]
-      }
+      "bundleIdentifier": "br.edu.ucb.taskflow"
     },
     "android": {
       "package": "br.edu.ucb.taskflow",
@@ -61,16 +47,7 @@
       "expo-web-browser",
       "@react-native-community/datetimepicker",
       "expo-image",
-      "expo-status-bar",
-      "@react-native-google-signin/google-signin",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "usesCleartextTraffic": true
-          }
-        }
-      ]
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true,
