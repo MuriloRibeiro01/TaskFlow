@@ -1,0 +1,14 @@
+# A imagem instala as próprias dependências (npm ci) e gera o client (prisma generate).
+node_modules
+dist
+src/generated
+coverage
+*.tsbuildinfo
+
+# Segredos nunca entram na imagem; o compose injeta as variáveis em tempo de execução.
+.env
+.env.*
+
+.git
+.claude
+.windsurf
