@@ -1,4 +1,9 @@
-package com.taskflow.api.task;
+package com.taskflow.api.application.task;
+
+import com.taskflow.api.domain.task.Priority;
+import com.taskflow.api.domain.task.Task;
+import com.taskflow.api.domain.task.TaskStatus;
+import com.taskflow.api.infrastructure.jpa.TaskRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

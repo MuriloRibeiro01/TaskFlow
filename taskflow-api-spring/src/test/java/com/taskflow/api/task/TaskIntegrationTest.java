@@ -1,5 +1,7 @@
 package com.taskflow.api.task;
 
+import com.taskflow.api.domain.task.Task;
+import com.taskflow.api.infrastructure.jpa.TaskRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;

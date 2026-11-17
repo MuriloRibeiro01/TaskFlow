@@ -35,10 +35,10 @@ class AuthRateLimitTest {
   @Test
   void deixaPassarAteOLimiteERecusaDepoisCom429EJson() throws Exception {
     AuthRateLimit filter = new AuthRateLimit(2, json, clock);
-    assertThat(call(filter, "POST", "/auth/google", "1.1.1.1").getStatus()).isEqualTo(200);
+    assertThat(call(filter, "POST", "/auth/login", "1.1.1.1").getStatus()).isEqualTo(200);
     assertThat(call(filter, "POST", "/auth/dev-login", "1.1.1.1").getStatus()).isEqualTo(200);
 
-    MockHttpServletResponse blocked = call(filter, "POST", "/auth/google", "1.1.1.1");
+    MockHttpServletResponse blocked = call(filter, "POST", "/auth/login", "1.1.1.1");
     assertThat(blocked.getStatus()).isEqualTo(429);
     assertThat(blocked.getHeader("Retry-After")).isNotNull();
     assertThat(json.readValue(blocked.getContentAsString(), ApiError.class).statusCode()).isEqualTo(429);
@@ -47,13 +47,13 @@ class AuthRateLimitTest {
   @Test
   void contaPorIpEZeraDepoisDeUmMinuto() throws Exception {
     AuthRateLimit filter = new AuthRateLimit(1, json, clock);
-    call(filter, "POST", "/auth/google", "1.1.1.1");
+    call(filter, "POST", "/auth/login", "1.1.1.1");
 
-    assertThat(call(filter, "POST", "/auth/google", "2.2.2.2").getStatus()).isEqualTo(200);
-    assertThat(call(filter, "POST", "/auth/google", "1.1.1.1").getStatus()).isEqualTo(429);
+    assertThat(call(filter, "POST", "/auth/login", "2.2.2.2").getStatus()).isEqualTo(200);
+    assertThat(call(filter, "POST", "/auth/login", "1.1.1.1").getStatus()).isEqualTo(429);
 
     now = now.plusSeconds(61);
-    assertThat(call(filter, "POST", "/auth/google", "1.1.1.1").getStatus()).isEqualTo(200);
+    assertThat(call(filter, "POST", "/auth/login", "1.1.1.1").getStatus()).isEqualTo(200);
   }
 
   @Test

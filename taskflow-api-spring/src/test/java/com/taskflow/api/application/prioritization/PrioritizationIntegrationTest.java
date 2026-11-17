@@ -1,4 +1,4 @@
-package com.taskflow.api.prioritization;
+package com.taskflow.api.application.prioritization;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
