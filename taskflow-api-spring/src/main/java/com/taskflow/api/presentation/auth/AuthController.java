@@ -8,7 +8,6 @@ import com.taskflow.api.application.auth.LoginResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,11 +41,5 @@ class AuthController {
   @PostMapping("/login")
   LoginResponse emailLogin(@Valid @RequestBody EmailAuthRequest request) {
     return auth.emailLogin(request);
-  }
-
-  // JWT é stateless; o app descarta o token localmente — 204 confirma que o token era válido.
-  @PostMapping("/logout")
-  ResponseEntity<Void> logout() {
-    return ResponseEntity.noContent().build();
   }
 }

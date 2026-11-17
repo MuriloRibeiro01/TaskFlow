@@ -3,7 +3,6 @@ package com.taskflow.api.infrastructure.jpa;
 import com.taskflow.api.domain.task.Task;
 import com.taskflow.api.domain.task.TaskStatus;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -28,7 +27,4 @@ public interface TaskRepository extends JpaRepository<Task, Integer> {
   @Modifying
   @Query("delete from Task t where t.id = :id and t.userId = :userId")
   int deleteByIdAndUserId(@Param("id") Integer id, @Param("userId") Integer userId);
-
-  @Query("select count(t) from Task t where t.userId = :userId and t.status = :status and t.completedAt >= :from and t.completedAt < :to")
-  int countByUserIdAndStatusAndCompletedAtBetween(@Param("userId") Integer userId, @Param("status") TaskStatus status, @Param("from") Instant from, @Param("to") Instant to);
 }

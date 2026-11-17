@@ -1,9 +1,7 @@
 package com.taskflow.api.infrastructure.jpa;
 
 import com.taskflow.api.domain.session.PomodoroSession;
-import com.taskflow.api.domain.session.SessionStatus;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,7 +21,4 @@ public interface SessionRepository extends JpaRepository<PomodoroSession, Intege
   @Modifying
   @Query("delete from PomodoroSession s where s.id = :id and s.userId = :userId")
   int deleteByIdAndUserId(@Param("id") Integer id, @Param("userId") Integer userId);
-
-  @Query("select count(s) from PomodoroSession s where s.userId = :userId and s.status = :status and s.startedAt >= :from and s.startedAt < :to")
-  int countByUserIdAndStatusAndStartedAtBetween(@Param("userId") Integer userId, @Param("status") SessionStatus status, @Param("from") Instant from, @Param("to") Instant to);
 }

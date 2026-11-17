@@ -1,8 +1,7 @@
 package com.taskflow.api.presentation.user;
 
-import com.taskflow.api.application.user.MeStatsResponse;
-import com.taskflow.api.application.user.UpdateMeRequest;
 import com.taskflow.api.application.user.UserService;
+import com.taskflow.api.application.user.UpdateMeRequest;
 import com.taskflow.api.domain.user.User;
 
 import com.taskflow.api.application.auth.CurrentUser;
@@ -33,10 +32,5 @@ class UserController {
   @PatchMapping("/me")
   User updateMe(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody UpdateMeRequest request) {
     return users.updateMe(CurrentUser.id(jwt), request);
-  }
-
-  @GetMapping("/me/stats")
-  MeStatsResponse stats(@AuthenticationPrincipal Jwt jwt) {
-    return users.stats(CurrentUser.id(jwt));
   }
 }
