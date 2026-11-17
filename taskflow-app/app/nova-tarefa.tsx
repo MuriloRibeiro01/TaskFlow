@@ -15,7 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { ColorTheme, FontSize, Fonts, Spacing } from '@/theme';
 import { useTheme } from '@/hooks/useTheme';
-import { createTask, editTask, getTaskById } from '@/database/tasks';
+import { editTask, getTaskById } from '@/database/tasks';
+import { container } from '@/src/main/container';
 import { useAuth } from '@/database/context/auth_context';
 
 type Priority = 'low' | 'medium' | 'high';
@@ -142,13 +143,13 @@ export default function NovaTarefa() {
         due_date: dueDate,
       });
     } else {
-      createTask({
+      container.createTask.execute({
         title: title.trim(),
         description: description.trim(),
         priority,
-        estimated_pomodoros: usePomodoro ? estimatedPomodoros : undefined,
-        due_date: dueDate ?? undefined,
-        user_id: user?.id ?? '',
+        estimatedPomodoros: usePomodoro ? estimatedPomodoros : 1,
+        dueDate: dueDate,
+        userId: user?.id ?? '',
       });
     }
 
