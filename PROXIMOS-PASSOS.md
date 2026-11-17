@@ -9,7 +9,7 @@ Leia antes: [actions/2026-11-14-doctor-demo-apk.md](actions/2026-11-14-doctor-de
 ## Decisões já tomadas (não rediscutir)
 
 - Backend é **só o Spring** (`taskflow-api-spring/`). **Sem Supabase**, nem para o login (decisão de 30/10).
-- Login com Google direto na API: o app manda o `idToken` do Google para `POST /auth/google` e recebe o JWT da API (30 dias).
+- **O login com Google foi removido** (17/11): o acesso é por e-mail e senha (`POST /auth/register` e `/auth/login`), mais o `dev-login` só para demo local. O JWT é da própria API.
 - **Flyway é o único dono do schema.** Migration nova = `V3__...sql` (nunca Prisma, nunca `ddl-auto=update`). Faça `pg_dump` antes de migrar dados reais.
 - Metodologia: **testes antes da implementação** e, no fim de cada demanda, um `.md` datado em `actions/`.
 
@@ -17,26 +17,23 @@ Leia antes: [actions/2026-11-14-doctor-demo-apk.md](actions/2026-11-14-doctor-de
 
 | Parte | Situação |
 |---|---|
-| API Spring: auth (dev-login e Google), `/users/me`, CRUD de `/tasks`, CRUD de `/sessions` | Pronta. 59 testes (Testcontainers). Rodando no Docker desta máquina. |
+| API Spring: auth (e-mail/senha e dev-login), `/users/me`, CRUD de `/tasks`, CRUD de `/sessions` | Pronta. 59 testes (Testcontainers). Rodando no Docker desta máquina. |
 | Banco (Postgres 15 no Docker, porta 5435) | Na V2 (`due_date`, `quadrant`). Com 1 usuário e 1 tarefa vindos do app. |
 | App: cliente HTTP, mappers, `SyncService`, gatilhos de sync (inclusive logo após gravar), login obrigatório | 85 testes em Jest. Rodando no emulador (dev build `br.edu.ucb.taskflow`). |
-| Login com Google ponta a ponta (app → Google → API) | **Validado em 31/10:** login no emulador criou o usuário na API e a tarefa criada no app chegou ao Postgres. |
+| Login ponta a ponta (app → API) | Validado em 31/10 com o login antigo (Google, já removido): o usuário foi criado na API e a tarefa do app chegou ao Postgres. Refazer a validação com e-mail e senha. |
 
 ## Falta fazer (em ordem)
 
 ### 1. Terminar a validação de ponta a ponta
 
-Feito em 31/10: Client IDs no Google Cloud (Web + Android `br.edu.ucb.taskflow`), `.env` da raiz e do app, dev build, login com Google e uma tarefa criada no app chegando ao Postgres.
+Feito em 31/10 (com o login antigo): `.env` da raiz e do app, dev build e uma tarefa criada no app chegando ao Postgres.
 
 - [x] ~~Sync logo após gravar no aparelho~~: confirmado em 14/11.
-- [x] ~~Login com Google no APK de apresentação~~: confirmado em 14/11.
 - [ ] Testar o resto do ciclo: editar, concluir, apagar, concluir um pomodoro (gera sessão), aplicar uma priorização e reinstalar o app para ver o pull.
-- [ ] Cada integrante do grupo: adicionar o email como **usuário de teste** na tela de consentimento OAuth (modo teste) e rodar com o próprio `.env`.
+- [ ] Cada integrante do grupo: rodar com o próprio `.env`.
 
 **Armadilhas já vistas** (para quem for configurar em outra máquina):
-- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` e `GOOGLE_CLIENT_IDS` levam o ID do cliente do tipo **Aplicativo da Web**, não o do Android nem o do iOS (os três começam com o mesmo número). ID errado → `DEVELOPER_ERROR`.
 - O Metro só lê o `.env` ao iniciar: depois de mudar o `.env` do app, `npx expo start --dev-client --clear`.
-- A API lê `GOOGLE_CLIENT_IDS` (plural); `GOOGLE_CLIENT_ID` é sobra do NestJS.
 - Ao trocar o pacote, o app antigo continua instalado com o mesmo nome e ícone: desinstale (`adb uninstall com.taskflow.app`).
 - Se o aparelho não alcançar a API: liberar a porta 3000 no Firewall do Windows.
 
@@ -52,9 +49,8 @@ Feito em 31/10: Client IDs no Google Cloud (Web + Android `br.edu.ucb.taskflow`)
 
 ### 3. Pendências de backend
 
-- [x] ~~Timeout e chamada externa dentro da transação~~: resolvido no `GoogleAuth` (JWKS com timeout de 5 s, token conferido antes da transação).
-- [ ] Sem **rate limit** em `/auth/google` e `/auth/dev-login`.
-- [ ] Sem **refresh token**: o JWT vale 30 dias e depois o app pede o login com Google de novo. Se incomodar, criar `/auth/refresh`.
+- [x] ~~Rate limit em `/auth/*`~~: feito (`AuthRateLimit`).
+- [ ] Sem **refresh token**: o JWT vale 30 dias e depois o app pede o login de novo. Se incomodar, criar `/auth/refresh`.
 - [ ] Sem endpoint de **estatísticas/histórico**: o app calcula tudo localmente a partir do SQLite. Só vira necessidade se quiserem dados consolidados no servidor.
 
 ### 4. Limpeza do repositório (precisa da aprovação do grupo)
@@ -66,7 +62,7 @@ Feito em 31/10: Client IDs no Google Cloud (Web + Android `br.edu.ucb.taskflow`)
 ## Como rodar (referência rápida)
 
 ```bash
-# Banco + API (a API precisa do .env da raiz: POSTGRES_*, JWT_SECRET, ENABLE_DEV_LOGIN, GOOGLE_CLIENT_IDS)
+# Banco + API (a API precisa do .env da raiz: POSTGRES_*, JWT_SECRET, ENABLE_DEV_LOGIN)
 docker compose up -d
 
 # Testes do backend (Docker precisa estar ativo; usa Postgres descartável via Testcontainers)
@@ -78,7 +74,7 @@ cd taskflow-app && npx jest
 
 **Atenção à RAM:** a máquina anterior tinha ~8 GB e a última sessão foi encerrada por falta de memória. Antes de `./mvnw test`, pare a API (`docker stop taskflow-api`) e não rode Maven e Jest ao mesmo tempo. Use `npx jest --runInBand`.
 
-## Mapa rápido do que mudou nesta etapa (30/10)
+## Mapa rápido do que mudou nesta etapa (30/10, histórico: o login com Google foi removido depois)
 
 - **API:** `auth/GoogleAuth.java` e `auth/GoogleLoginRequest.java` (novos), `POST /auth/google` em `AuthController`; saíram `SupabaseAuth` e `/auth/supabase-login`.
 - **App:** `database/services/auth.ts` (Google nativo), `database/api/client.ts` (sessão da API no SecureStore, 401 → login), `database/context/auth_context.tsx`; saiu `database/supabase/` e o código morto do Supabase.

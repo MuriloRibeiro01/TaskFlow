@@ -29,18 +29,17 @@ function summary(ctx, mode) {
     console.log(`   Modo:  ${mode}`);
     console.log(`   API:   ${ctx.apiUrl}`);
     if (ctx.counts) console.log(`   Banco: ${ctx.counts}`);
-    console.log('   Login: Google. A conta precisa estar em "usuários de teste" na tela de consentimento OAuth.');
+    console.log('   Login: e-mail e senha (crie a conta pelo app).');
     console.log('   Celular físico sem acesso à API? Mesma rede Wi-Fi e porta 3000 liberada no Firewall do Windows.');
 }
 
 async function demoApk(ctx) {
     const meta = existsSync(APK_META) ? JSON.parse(readFileSync(APK_META, 'utf8')) : null;
     const stale = !meta || !existsSync(APK_FILE)
-        || meta.apiUrl !== ctx.apiUrl
-        || meta.webClientId !== ctx.appEnv.get('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID');
+        || meta.apiUrl !== ctx.apiUrl;
 
     if (stale) {
-        console.log(`\n⚠ ${meta ? 'O APK foi gerado com outro endereço da API ou outro ID do Google' : 'O APK de apresentação ainda não existe'}: gerando agora.`);
+        console.log(`\n⚠ ${meta ? 'O APK foi gerado com outro endereço da API' : 'O APK de apresentação ainda não existe'}: gerando agora.`);
         if (!(await buildApk({ install: true }))) return false;
     } else {
         const at = installedAt(ctx.adb, ctx.device);

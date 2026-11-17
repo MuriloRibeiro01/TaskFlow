@@ -13,14 +13,11 @@ import {
     worst,
 } from './lib.mjs';
 
-const WEB = '547989278497-9qmguste0nqsojtuf3bmrviniematd72.apps.googleusercontent.com';
-const OUTRO = '547989278497-9lvgc9ht3mfu0k69mme8tqfcmjqj6ftv.apps.googleusercontent.com';
-
 const raizOk = () => new Map([
     ['POSTGRES_USER', 'postgres'], ['POSTGRES_PASSWORD', 'segredo'], ['POSTGRES_DB', 'taskflow'],
-    ['JWT_SECRET', 'x'.repeat(64)], ['GOOGLE_CLIENT_IDS', WEB], ['ENABLE_DEV_LOGIN', 'false'],
+    ['JWT_SECRET', 'x'.repeat(64)], ['ENABLE_DEV_LOGIN', 'false'],
 ]);
-const appOk = () => new Map([['EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID', WEB], ['EXPO_PUBLIC_API_URL', 'http://192.168.0.179:3000']]);
+const appOk = () => new Map([['EXPO_PUBLIC_API_URL', 'http://192.168.0.179:3000']]);
 const textos = (issues) => issues.map((i) => i.msg).join(' | ');
 
 test('parseEnv lê chave=valor, ignora comentários e linhas vazias, tira aspas e \\r', () => {
@@ -54,15 +51,6 @@ test('checkRootEnv: JWT_SECRET curto é erro (a API não sobe)', () => {
     assert.match(textos(checkRootEnv(env)), /JWT_SECRET/);
 });
 
-test('checkRootEnv: GOOGLE_CLIENT_IDS vazio é erro, e avisa se o ID foi parar no GOOGLE_CLIENT_ID (singular)', () => {
-    const env = raizOk();
-    env.set('GOOGLE_CLIENT_IDS', '');
-    env.set('GOOGLE_CLIENT_ID', WEB);
-    const issues = checkRootEnv(env);
-    assert.equal(worst(issues), 'error');
-    assert.match(textos(issues), /GOOGLE_CLIENT_ID \(singular\)/);
-});
-
 test('checkRootEnv: dev-login ligado vira aviso', () => {
     const env = raizOk();
     env.set('ENABLE_DEV_LOGIN', 'true');
@@ -71,28 +59,20 @@ test('checkRootEnv: dev-login ligado vira aviso', () => {
     assert.match(textos(issues), /ENABLE_DEV_LOGIN/);
 });
 
-test('checkAppEnv: app e API com o mesmo ID Web não tem erro', () => {
-    assert.equal(worst(checkAppEnv(appOk(), raizOk())), 'ok');
+test('checkAppEnv: .env do app completo não tem erro', () => {
+    assert.equal(worst(checkAppEnv(appOk())), 'ok');
 });
 
-test('checkAppEnv: ID do app que a API não aceita é erro (DEVELOPER_ERROR / 401)', () => {
-    const app = appOk();
-    app.set('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID', OUTRO);
-    const issues = checkAppEnv(app, raizOk());
+test('checkAppEnv: sem URL da API é erro', () => {
+    const issues = checkAppEnv(new Map());
     assert.equal(worst(issues), 'error');
-    assert.match(textos(issues), /GOOGLE_CLIENT_IDS/);
-});
-
-test('checkAppEnv: sem ID do Google ou sem URL da API é erro', () => {
-    const issues = checkAppEnv(new Map(), raizOk());
-    assert.match(textos(issues), /EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID/);
     assert.match(textos(issues), /EXPO_PUBLIC_API_URL/);
 });
 
 test('checkAppEnv: localhost na URL da API é aviso (só serve no simulador iOS; no Android é o próprio aparelho)', () => {
     const app = appOk();
     app.set('EXPO_PUBLIC_API_URL', 'http://localhost:3000');
-    const issues = checkAppEnv(app, raizOk());
+    const issues = checkAppEnv(app);
     assert.equal(worst(issues), 'warn');
     assert.match(textos(issues), /localhost/);
 });

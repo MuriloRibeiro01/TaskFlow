@@ -13,7 +13,7 @@
 | Priorização ML | Python, scikit-learn (TF-IDF + regressão logística) | `taskflow-ml/` |
 | Infraestrutura | Docker + Docker Compose | `compose.yml` |
 
-Autenticação via OAuth Google: o app obtém o ID token do Google, a API valida e emite um JWT próprio.
+Autenticação por e-mail e senha: a API valida as credenciais e emite um JWT próprio.
 
 ## Documentação
 
@@ -37,7 +37,7 @@ Com os dois `.env` preenchidos (veja [Configuração do ambiente](#configuraçã
 | `npm run doctor` | Confere ferramentas, `.env`, IP da máquina, Docker, banco, API, aparelho e APK, e diz como corrigir cada problema |
 | `npm run doctor -- --fix` | Corrige sozinho o que é seguro: abre o Docker e o emulador, sobe os containers (e recria a API se travar), reconstrói a imagem desatualizada, atualiza `EXPO_PUBLIC_API_URL` quando o IP muda e desinstala o app antigo `com.taskflow.app` |
 | `npm run apk` | Gera o **APK de apresentação** (release, com o JavaScript dentro, sem Metro) em `dist/` e instala no aparelho |
-| `npm run demo` | Roteiro do dia: doctor `--fix`, sobe banco e API, instala o APK (ou gera de novo, se o IP ou o ID do Google mudaram) e abre o app |
+| `npm run demo` | Roteiro do dia: doctor `--fix`, sobe banco e API, instala o APK (ou gera de novo, se o IP mudou) e abre o app |
 | `npm run demo:dev` | Plano B: build de desenvolvimento + Metro, com o JavaScript compilado antes de abrir o app |
 | `npm run test:doctor` | Testes do doctor |
 
@@ -47,19 +47,13 @@ Com os dois `.env` preenchidos (veja [Configuração do ambiente](#configuraçã
 
 1. `npm run doctor -- --fix`: tudo verde, ou só avisos.
 2. `npm run apk`: gera e instala o APK. O IP da API vai **dentro** do APK.
-3. Abra o app, entre com Google, crie uma tarefa e confira se ela sincroniza.
+3. Abra o app, entre com e-mail e senha, crie uma tarefa e confira se ela sincroniza.
 
 **No dia:**
 
 1. Conecte na **mesma rede** da véspera. Se o IP mudar, o `demo` gera o APK de novo (10 a 20 min).
 2. `npm run demo`.
 3. Se algo falhar no APK: `npm run demo:dev`.
-
-**Checklist do login com Google:**
-
-- A conta que vai entrar está em **usuários de teste** na tela de consentimento OAuth do Google Cloud.
-- O APK é assinado com a chave de debug padrão, cujo SHA-1 (`5E:8F:16:...:F6:25`) já está no Client ID Android `br.edu.ucb.taskflow`. Não precisa de outro cadastro.
-- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (app) e `GOOGLE_CLIENT_IDS` (raiz) têm o mesmo ID, do cliente **Aplicativo da Web**. O doctor confere.
 
 **Celular físico** em vez de emulador: depuração USB ativa, mesma rede Wi-Fi da máquina e porta 3000 liberada no Firewall do Windows (`netsh advfirewall firewall add rule name="TaskFlow API" dir=in action=allow protocol=TCP localport=3000`, como administrador).
 
@@ -88,7 +82,7 @@ Gere o `JWT_SECRET` e preencha no `.env`:
 openssl rand -hex 32
 ```
 
-Para testes locais sem Google, habilite o login de desenvolvimento:
+Para testes locais sem senha, habilite o login de desenvolvimento:
 
 ```
 ENABLE_DEV_LOGIN=true
@@ -160,12 +154,10 @@ npm install
 | Variável | Valor |
 |---|---|
 | `EXPO_PUBLIC_API_URL` | `http://<IP-DA-MÁQUINA>:3000` (dispositivo físico) ou `http://localhost:3000` (simulador iOS) |
-| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Client ID Web do Google Cloud Console |
-| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | Client ID iOS do Google Cloud Console (bundle ID: `br.edu.ucb.taskflow`) |
 
 > No emulador Android use `http://10.0.2.2:3000`. Para descobrir o IP da máquina: `ipconfig getifaddr en0`
 
-**Primeira build nativa** (necessária para módulos nativos como Google Sign-In):
+**Primeira build nativa** (necessária para módulos nativos):
 
 ```bash
 # Simulador iOS
