@@ -10,9 +10,9 @@ import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -28,16 +28,13 @@ class SecurityConfig {
         // API sem sessão nem cookies (token no header), então CSRF não se aplica.
         .csrf(csrf -> csrf.disable())
         .cors(Customizer.withDefaults())
-        // API só devolve JSON: nada de página, script ou frame. O HSTS fica no proxy com HTTPS.
-        .headers(
-            h ->
-                h.contentSecurityPolicy(c -> c.policyDirectives("default-src 'none'; frame-ancestors 'none'"))
-                    .referrerPolicy(r -> r.policy(ReferrerPolicy.NO_REFERRER)))
+        .headers(h -> h.frameOptions(f -> f.disable()))
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(HttpMethod.GET, "/").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/auth/dev-login", "/auth/google").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/auth/dev-login", "/auth/register", "/auth/login").permitAll()
+                    .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                     .requestMatchers("/error").permitAll()
                     .anyRequest().authenticated())
         .oauth2ResourceServer(
@@ -55,6 +52,11 @@ class SecurityConfig {
       json.writeValue(
           response.getOutputStream(), ApiErrorHandler.of(HttpStatus.UNAUTHORIZED, "Unauthorized"));
     };
+  }
+
+  @Bean
+  BCryptPasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
   }
 
   /** Qualquer origem: a auth é por header Authorization, que o navegador não envia sozinho como cookie. */
