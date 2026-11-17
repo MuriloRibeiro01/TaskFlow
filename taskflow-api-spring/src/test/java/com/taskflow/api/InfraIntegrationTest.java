@@ -7,8 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.taskflow.api.task.Task;
-import com.taskflow.api.task.TaskRepository;
+import com.taskflow.api.domain.task.Task;
+import com.taskflow.api.infrastructure.jpa.TaskRepository;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
