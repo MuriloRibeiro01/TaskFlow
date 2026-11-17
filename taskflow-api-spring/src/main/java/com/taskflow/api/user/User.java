@@ -18,6 +18,7 @@ public class User {
   private String displayName;
   private String avatarUrl;
   private String routineText;
+  private String passwordHash;
 
   protected User() {}
 
@@ -33,4 +34,6 @@ public class User {
   public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
   public String getRoutineText() { return routineText; }
   public void setRoutineText(String routineText) { this.routineText = routineText; }
+  public String getPasswordHash() { return passwordHash; }
+  public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
 }
