@@ -1,4 +1,7 @@
-package com.taskflow.api.auth;
+package com.taskflow.api.presentation.auth;
+
+import com.taskflow.api.application.auth.AuthService;
+import com.taskflow.api.application.auth.DevLoginRequest;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;

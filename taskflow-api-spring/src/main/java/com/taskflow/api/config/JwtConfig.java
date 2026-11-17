@@ -1,7 +1,7 @@
 package com.taskflow.api.config;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
-import com.taskflow.api.user.UserRepository;
+import com.taskflow.api.infrastructure.jpa.UserRepository;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.function.Predicate;
