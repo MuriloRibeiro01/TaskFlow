@@ -1,4 +1,4 @@
-package com.taskflow.api.auth;
+package com.taskflow.api.application.auth;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
