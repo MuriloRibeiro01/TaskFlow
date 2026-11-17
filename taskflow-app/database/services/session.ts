@@ -1,5 +1,4 @@
 // Controla o comportamento da sessão
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { clearSession, getSession, type AuthUser } from '../api/client';
 import { db } from '../schemas';
 
@@ -8,8 +7,6 @@ export async function getCurrentSession() {
 }
 
 export async function logout() {
-    // Sem isso o Google entraria de novo na mesma conta sem perguntar
-    await GoogleSignin.signOut().catch(() => {});
     await clearSession();
 }
 

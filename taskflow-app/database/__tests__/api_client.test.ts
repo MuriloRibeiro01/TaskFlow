@@ -1,4 +1,4 @@
-// TDD do cliente HTTP da API Spring: login com o ID token do Google, sessão salva no aparelho e 401 encerra a sessão
+// TDD do cliente HTTP da API Spring: login por e-mail e senha, sessão salva no aparelho e 401 encerra a sessão
 
 import { chunkedSecureStorage } from '../api/secure_storage';
 import {
@@ -7,7 +7,7 @@ import {
     clearSession,
     getSession,
     loginDev,
-    loginWithGoogle,
+    loginWithEmail,
     onSessionExpired,
     resetSessionCache,
 } from '../api/client';
@@ -39,31 +39,31 @@ beforeEach(() => {
     storage.getItem.mockResolvedValue(null);
 });
 
-describe('loginWithGoogle', () => {
-    it('Troca o ID token do Google pelo JWT da API e salva a sessão', async () => {
+describe('loginWithEmail', () => {
+    it('Troca e-mail e senha pelo JWT da API e salva a sessão', async () => {
         fetchMock.mockResolvedValueOnce(resposta(200, { accessToken: 'api-token', user: usuarioApi }));
 
-        const user = await loginWithGoogle('google-id-token');
+        const user = await loginWithEmail('ana@gmail.com', 'senha-ok');
 
-        expect(fetchMock).toHaveBeenCalledWith('http://api/auth/google', expect.objectContaining({
+        expect(fetchMock).toHaveBeenCalledWith('http://api/auth/login', expect.objectContaining({
             method: 'POST',
-            body: JSON.stringify({ idToken: 'google-id-token' }),
+            body: JSON.stringify({ email: 'ana@gmail.com', password: 'senha-ok' }),
         }));
         // id em texto: é o que as tarefas locais guardam em user_id
         expect(user).toEqual({ id: '7', email: 'ana@gmail.com', displayName: 'Ana', avatarUrl: 'http://img' });
         expect(storage.setItem).toHaveBeenCalledWith('taskflow.session', sessaoSalva);
     });
 
-    it('Lança ApiError quando a API recusa o token, sem salvar nada', async () => {
+    it('Lança ApiError quando a API recusa as credenciais, sem salvar nada', async () => {
         fetchMock.mockResolvedValueOnce(resposta(401));
 
-        await expect(loginWithGoogle('ruim')).rejects.toMatchObject({ status: 401 });
+        await expect(loginWithEmail('ana@gmail.com', 'ruim')).rejects.toMatchObject({ status: 401 });
         expect(storage.setItem).not.toHaveBeenCalled();
     });
 });
 
 describe('loginDev', () => {
-    it('Entra pelo /auth/dev-login (só para demo local) e salva a sessão como no Google', async () => {
+    it('Entra pelo /auth/dev-login (só para demo local) e salva a sessão como no login por e-mail', async () => {
         fetchMock.mockResolvedValueOnce(resposta(200, { accessToken: 'api-token', user: usuarioApi }));
 
         const user = await loginDev('ana@gmail.com');
