@@ -1,87 +1,41 @@
-import React, { useCallback, useState } from 'react';
-import { Appearance, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ColorTheme, Fonts, Spacing } from '@/theme';
 import { useTheme } from '@/hooks/useTheme';
-import { useAuth } from '@/database/context/auth_context';
-import { getAllTasks } from '@/database/tasks';
-import { api } from '@/database/api/client';
-import { Task } from '@/types/task.types';
-import { useNetInfo } from '@react-native-community/netinfo';
-import { useToast } from '@/components/notifications/Toast';
-
-function getInitials(name?: string | null): string {
-  if (!name) return 'U';
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return 'U';
-  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
+import { useProfileViewModel } from '@/hooks/useProfileViewModel';
 
 export default function Perfil() {
-  const { colors, colorScheme } = useTheme();
+  const { colors } = useTheme();
   const styles = getStyles(colors);
-  const { user, signOut } = useAuth();
-  const { showToast } = useToast();
-  const netInfo = useNetInfo();
-  const [tasks, setTasks] = useState<Task[]>([]);
-
-  const [focusDuration, setFocusDuration] = useState(25);
-  const [breakDuration, setBreakDuration] = useState(5);
-  const [soundOn, setSoundOn] = useState(true);
-  const [vibOn, setVibOn] = useState(true);
-  const [routine, setRoutine] = useState('');
-  const [savedRoutine, setSavedRoutine] = useState('');
-
-  useFocusEffect(
-    useCallback(() => {
-      const all = getAllTasks(user?.id ?? '');
-      setTasks(all);
-      // Offline ou sem sessão: o campo fica vazio e o usuário pode tentar de novo ao voltar.
-      api<{ routineText?: string | null }>('GET', '/users/me')
-        .then((me) => {
-          setRoutine(me.routineText ?? '');
-          setSavedRoutine(me.routineText ?? '');
-        })
-        .catch(() => {});
-    }, [user?.id])
-  );
-
-  const saveRoutine = async () => {
-    if (routine === savedRoutine) return;
-    try {
-      await api('PATCH', '/users/me', { routineText: routine });
-      setSavedRoutine(routine);
-      showToast('Rotina salva', 'success');
-    } catch {
-      showToast('Não foi possível salvar a rotina. Tente de novo com internet.', 'error');
-    }
-  };
-
-  const today = new Date().toISOString().substring(0, 10);
-  const todayDone = tasks.filter(
-    (t) => t.status === 'done' && t.completed_at?.substring(0, 10) === today
-  );
-  const pomToday = todayDone.reduce(
-    (acc, t) => acc + (t.completed_pomodoros ?? 0),
-    0
-  );
-  const doneToday = todayDone.length;
-
-  const isOnline = netInfo.isConnected === true;
-  const syncMeta = isOnline ? 'Sincronizado' : 'Sem conexão';
-
-  const avatarUrl = user?.user_metadata?.avatar_url;
-  const fullName = user?.user_metadata?.full_name ?? 'Usuário';
-  const email = user?.email ?? '';
-  const provider = String(
-    user?.app_metadata?.provider ?? user?.identities?.[0]?.provider ?? ''
-  ).toUpperCase();
-
-  const handleSignOut = async () => {
-    await signOut();
-  };
+  const {
+    colorScheme,
+    routine,
+    setRoutine,
+    saveRoutine,
+    focusDuration,
+    setFocusDuration,
+    breakDuration,
+    setBreakDuration,
+    soundOn,
+    setSoundOn,
+    vibOn,
+    setVibOn,
+    pomToday,
+    doneToday,
+    isOnline,
+    syncMeta,
+    avatarUrl,
+    fullName,
+    email,
+    provider,
+    initials,
+    handleSignOut,
+    setColorScheme,
+    navigateToHistorico,
+    navigateToEstatisticas,
+    showExportToast,
+  } = useProfileViewModel();
 
   return (
     <View style={styles.container}>
@@ -102,7 +56,7 @@ export default function Perfil() {
             <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarInitials}>{getInitials(fullName)}</Text>
+              <Text style={styles.avatarInitials}>{initials}</Text>
             </View>
           )}
           <View style={styles.userInfo}>
@@ -186,7 +140,7 @@ export default function Perfil() {
               styles.navItem,
               pressed && { backgroundColor: colors.papel3 },
             ]}
-            onPress={() => router.push('/historico')}
+            onPress={navigateToHistorico}
           >
             <Text style={styles.navText}>Histórico</Text>
             <Text style={styles.navChevron}>›</Text>
@@ -198,7 +152,7 @@ export default function Perfil() {
               styles.navItem,
               pressed && { backgroundColor: colors.papel3 },
             ]}
-            onPress={() => router.push('/estatisticas')}
+            onPress={navigateToEstatisticas}
           >
             <Text style={styles.navText}>Estatísticas</Text>
             <Text style={styles.navChevron}>›</Text>
@@ -270,7 +224,7 @@ export default function Perfil() {
                       ? { borderColor: colors.tinta, backgroundColor: colors.tinta }
                       : { borderColor: colors.cinza, backgroundColor: 'transparent' },
                   ]}
-                  onPress={() => Appearance.setColorScheme('light')}
+                  onPress={() => setColorScheme('light')}
                 >
                   <Text
                     style={[
@@ -290,7 +244,7 @@ export default function Perfil() {
                       ? { borderColor: colors.tinta, backgroundColor: colors.tinta }
                       : { borderColor: colors.cinza, backgroundColor: 'transparent' },
                   ]}
-                  onPress={() => Appearance.setColorScheme('dark')}
+                  onPress={() => setColorScheme('dark')}
                 >
                   <Text
                     style={[
@@ -360,7 +314,7 @@ export default function Perfil() {
             accessibilityRole="button"
             accessibilityLabel="Exportar relatório (PDF)"
             style={styles.exportButton}
-            onPress={() => showToast('Em breve', 'info')}
+            onPress={showExportToast}
           >
             <Text style={styles.exportButtonText}>Exportar relatório (PDF)</Text>
           </Pressable>
