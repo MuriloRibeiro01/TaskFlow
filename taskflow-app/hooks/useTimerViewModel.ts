@@ -1,9 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
+import * as Notifications from 'expo-notifications';
 import { getAllTasks } from '@/database/tasks';
 import { recordCompletedPomodoro } from '@/database/pomodoro';
 import { Task as DBTask } from '@/types/task.types';
 import { useAuth } from '@/database/context/auth_context';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const FOCUS_SECONDS = 25 * 60;
 const BREAK_SECONDS = 5 * 60;
@@ -55,6 +65,37 @@ export function formatSessionDuration(pomodoros: number, focusSeconds = FOCUS_SE
 
 export function useTimerViewModel() {
   const { user } = useAuth();
+
+  const notifIdRef = useRef<string | null>(null);
+
+  const cancelNotif = useCallback(() => {
+    if (!notifIdRef.current) return;
+    Notifications.cancelScheduledNotificationAsync(notifIdRef.current).catch(() => {});
+    notifIdRef.current = null;
+  }, []);
+
+  const scheduleNotif = useCallback((seconds: number, isBreakMode: boolean) => {
+    if (notifIdRef.current) {
+      Notifications.cancelScheduledNotificationAsync(notifIdRef.current).catch(() => {});
+      notifIdRef.current = null;
+    }
+    (async () => {
+      const { status } = await Notifications.getPermissionsAsync();
+      const granted = status === 'granted'
+        || (await Notifications.requestPermissionsAsync()).status === 'granted';
+      if (!granted) return;
+      notifIdRef.current = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: isBreakMode ? 'Intervalo concluído!' : 'Pomodoro concluído!',
+          body: isBreakMode ? 'Hora de voltar ao foco.' : 'Hora do intervalo.',
+        },
+        trigger: {
+          seconds,
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        },
+      });
+    })().catch(() => {});
+  }, []);
 
   const [todayTasks, setTodayTasks] = useState<TimerTask[]>([]);
   const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
@@ -131,10 +172,12 @@ export function useTimerViewModel() {
       setMode('focus');
       setCycleTotalSeconds(setupFocusSeconds);
       setRemainingSeconds(setupFocusSeconds);
+      scheduleNotif(setupFocusSeconds, false);
       return;
     }
 
     if (!activeTask) {
+      cancelNotif();
       setIsRunning(false);
       setIsFinished(true);
       return;
@@ -158,6 +201,7 @@ export function useTimerViewModel() {
     setCompletedCycles(nextCompletedCycles);
 
     if (nextCompletedCycles >= sessionTotalPomodoros) {
+      cancelNotif();
       setIsRunning(false);
       setIsFinished(true);
       return;
@@ -166,18 +210,25 @@ export function useTimerViewModel() {
     setMode('break');
     setCycleTotalSeconds(BREAK_SECONDS);
     setRemainingSeconds(BREAK_SECONDS);
+    scheduleNotif(BREAK_SECONDS, true);
   }, [
     activeTask,
+    cancelNotif,
     completedCycles,
     cycleTotalSeconds,
     isFinished,
     isRunning,
     mode,
     remainingSeconds,
+    scheduleNotif,
     sessionTotalPomodoros,
     setupFocusSeconds,
     user?.id,
   ]);
+
+  useEffect(() => {
+    if (!isRunning && hasStarted && !isFinished) cancelNotif();
+  }, [isRunning, hasStarted, isFinished, cancelNotif]);
 
   const toggleTask = (id: number) => {
     setSelectedTaskIds((ids) =>
@@ -192,6 +243,9 @@ export function useTimerViewModel() {
       setCompletedCycles(0);
       setCycleTotalSeconds(setupFocusSeconds);
       setRemainingSeconds(setupFocusSeconds);
+      scheduleNotif(setupFocusSeconds, false);
+    } else {
+      scheduleNotif(remainingSeconds, isBreak);
     }
     setHasStarted(true);
     setIsFinished(false);
@@ -205,6 +259,7 @@ export function useTimerViewModel() {
   };
 
   const cancelTimer = () => {
+    cancelNotif();
     setIsRunning(false);
     setHasStarted(false);
     setIsFinished(false);
