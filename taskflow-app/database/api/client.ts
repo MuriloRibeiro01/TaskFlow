@@ -1,4 +1,4 @@
-// Cliente HTTP da API Spring. O login é com Google direto na API: o ID token do Google vira o JWT da API.
+// Cliente HTTP da API Spring.
 import { chunkedSecureStorage } from './secure_storage';
 
 export class ApiError extends Error {
@@ -59,11 +59,12 @@ export function onSessionExpired(listener: () => void) {
     return () => { expiredListeners.delete(listener); };
 }
 
-export async function loginWithGoogle(idToken: string): Promise<AuthUser> {
-    const res = await fetch(`${baseUrl()}/auth/google`, {
+async function login(path: string, body: unknown): Promise<AuthUser> {
+    console.log('[API] login →', baseUrl() + path);
+    const res = await fetch(`${baseUrl()}${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify(body),
     });
     if (!res.ok) throw new ApiError(res.status);
 
@@ -76,6 +77,12 @@ export async function loginWithGoogle(idToken: string): Promise<AuthUser> {
     session = nova;
     return nova.user;
 }
+
+export const loginWithEmail = (email: string, password: string) => login('/auth/login', { email, password });
+export const registerWithEmail = (email: string, password: string) => login('/auth/register', { email, password });
+
+// Só para demo local: a API só aceita com ENABLE_DEV_LOGIN=true (404 caso contrário).
+export const loginDev = (email: string) => login('/auth/dev-login', { email });
 
 export async function api<T = any>(method: string, path: string, body?: unknown): Promise<T> {
     const atual = await getSession();
@@ -90,7 +97,7 @@ export async function api<T = any>(method: string, path: string, body?: unknown)
         body: body === undefined ? undefined : JSON.stringify(body),
     });
     if (res.status === 401) {
-        // Sem como renovar sozinho (o Google só dá token novo com o usuário na tela): pede login de novo.
+        // Token expirado: pede login de novo.
         await clearSession();
         expiredListeners.forEach((listener) => listener());
     }

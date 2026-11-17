@@ -110,4 +110,23 @@ class SessionIntegrationTest {
     call(post("/sessions"), tokenA, BODY.formatted("null").replace("}", ",\"userId\":1}")).andExpect(status().isBadRequest());
     call(patch("/sessions/abc"), tokenA, "{}").andExpect(status().isBadRequest());
   }
+
+  @Test
+  void recusaDuracaoAbsurdaEFimAntesDoInicio() throws Exception {
+    call(post("/sessions"), tokenA, BODY.formatted("null").replace("1500", "86401")).andExpect(status().isBadRequest());
+    call(post("/sessions"), tokenA, BODY.formatted("null").replace("1500", "86400")).andExpect(status().isCreated());
+    // fim 1 hora antes do início
+    call(post("/sessions"), tokenA, BODY.formatted("null").replace("T10:25:00", "T09:00:00")).andExpect(status().isBadRequest());
+    // sem fim continua valendo (sessão em andamento)
+    call(post("/sessions"), tokenA, BODY.formatted("null").replace(",\"endedAt\":\"2026-10-01T10:25:00.000Z\"", "")).andExpect(status().isCreated());
+  }
+
+  @Test
+  void atualizacaoNaoAceitaFimAntesDoInicioNemDuracaoAbsurda() throws Exception {
+    int id = id(call(post("/sessions"), tokenA, BODY.formatted("null")).andExpect(status().isCreated()));
+
+    call(patch("/sessions/" + id), tokenA, "{\"durationSeconds\":86401}").andExpect(status().isBadRequest());
+    call(patch("/sessions/" + id), tokenA, "{\"endedAt\":\"2026-10-01T09:00:00.000Z\"}").andExpect(status().isBadRequest());
+    call(patch("/sessions/" + id), tokenA, "{\"endedAt\":\"2026-10-01T11:00:00.000Z\"}").andExpect(status().isOk());
+  }
 }

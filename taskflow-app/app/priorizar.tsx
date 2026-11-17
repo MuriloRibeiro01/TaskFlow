@@ -1,54 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React from 'react';
 import {
-  Alert,
   Animated,
-  Modal,
-  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
-import NetInfo from '@react-native-community/netinfo';
-import AnimatedReanimated, {
-  Extrapolation,
-  interpolate,
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import { router } from 'expo-router';
+import AnimatedReanimated from 'react-native-reanimated';
 import { Colors, FontSize, Fonts, Spacing } from '@/theme';
-import { useAuth } from '@/database/context/auth_context';
-import { getAllTasks } from '@/database/tasks';
-import {
-  applyPrioritization,
-  decideTask,
-  discardPrioritization,
-  startPrioritization,
-  undoDecision,
-} from '@/database/services/prioritization.service';
-import { Task } from '@/types/task.types';
-import {
-  PrioritizationDecision,
-  PrioritizationSession,
-  QUADRANT_META,
-  Quadrant,
-  SuggestionResult,
-} from '@/types/prioritization.types';
-
-type PriorizacaoStep =
-  | 'no_connection'
-  | 'privacy_notice'
-  | 'syncing'
-  | 'generating'
-  | 'card'
-  | 'quadrant_selector'
-  | 'result'
-  | 'applied'
-  | 'ai_failure';
+import { CompareLists } from '@/components/prioritization/CompareLists';
+import { QUADRANT_META, Quadrant } from '@/types/prioritization.types';
+import { usePrioritizationViewModel } from '@/hooks/usePrioritizationViewModel';
 
 function PriorityBadge({ priority }: { priority: string }) {
   const map: Record<string, { symbol: string; label: string; color: string; bg: string }> = {
@@ -70,232 +34,35 @@ function PriorityBadge({ priority }: { priority: string }) {
 }
 
 export default function PriorizarModal() {
-  const { user } = useAuth();
-  const userId = user?.id ?? '';
+  const {
+    step,
+    queue,
+    currentIndex,
+    question,
+    answers,
+    outcome,
+    decisions,
+    allTasks,
+    skeletonOpacity,
+    panResponder,
+    cardAnimatedStyle,
+    acceptBadgeStyle,
+    rejectBadgeStyle,
+    currentTask,
+    resultSubtitle,
+    handleRetryConnection,
+    iniciarPriorizacao,
+    tentarIaDeNovo,
+    responder,
+    handleUndo,
+    applyResult,
+    discardResult,
+    onChoose,
+    onChooseAll,
+    setStep,
+  } = usePrioritizationViewModel();
 
-  const [step, setStep] = useState<PriorizacaoStep>('privacy_notice');
-  const [session, setSession] = useState<PrioritizationSession | null>(null);
-  const [suggestions, setSuggestions] = useState<SuggestionResult[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [decisions, setDecisions] = useState<PrioritizationDecision[]>([]);
-  const [allTasks, setAllTasks] = useState<Task[]>([]);
-
-  // Skeleton pulse animation
-  const skeletonOpacity = useRef(new Animated.Value(0.4)).current;
-
-  // Reanimated values for card swipe gesture
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-
-  // Check connection on mount
-  useEffect(() => {
-    async function checkConnection() {
-      try {
-        const state = await NetInfo.fetch();
-        if (state.isConnected === false) {
-          setStep('no_connection');
-        } else {
-          setStep('privacy_notice');
-        }
-      } catch {
-        setStep('privacy_notice');
-      }
-    }
-    checkConnection();
-  }, []);
-
-  // Load tasks on focus
-  useFocusEffect(
-    useCallback(() => {
-      if (userId) {
-        setAllTasks(getAllTasks(userId));
-      }
-    }, [userId])
-  );
-
-  // Skeleton loop animation
-  useEffect(() => {
-    if (step === 'syncing' || step === 'generating') {
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(skeletonOpacity, {
-            toValue: 1,
-            duration: 650,
-            useNativeDriver: true,
-          }),
-          Animated.timing(skeletonOpacity, {
-            toValue: 0.4,
-            duration: 650,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      loop.start();
-      return () => loop.stop();
-    }
-  }, [step, skeletonOpacity]);
-
-  // Retry connection
-  const handleRetryConnection = async () => {
-    const state = await NetInfo.fetch();
-    if (state.isConnected !== false) {
-      setStep('privacy_notice');
-    }
-  };
-
-  // Start prioritization flow
-  const iniciarPriorizacao = async () => {
-    setStep('syncing');
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    setStep('generating');
-    try {
-      const tasks = getAllTasks(userId);
-      setAllTasks(tasks);
-      const { session: newSession, suggestions: newSuggestions } = await startPrioritization(userId);
-      setSession(newSession);
-      setSuggestions(newSuggestions);
-      setCurrentIndex(0);
-      setDecisions([]);
-
-      if (newSuggestions.length === 0) {
-        Alert.alert('Sem tarefas pendentes', 'Você não possui tarefas pendentes para priorizar.');
-        router.back();
-        return;
-      }
-
-      translateX.value = 0;
-      translateY.value = 0;
-      setStep('card');
-    } catch {
-      setStep('ai_failure');
-    }
-  };
-
-  // Accept decision
-  const aceitarDecisao = useCallback(
-    (chosenQuadrant: Quadrant) => {
-      if (!session || suggestions.length === 0) return;
-      const current = suggestions[currentIndex];
-      if (!current) return;
-
-      const decision = decideTask(
-        session.id,
-        current.taskId,
-        chosenQuadrant,
-        current.suggestedQuadrant,
-        current.confidence
-      );
-
-      setDecisions((prev) => [...prev, decision]);
-      translateX.value = 0;
-      translateY.value = 0;
-
-      if (currentIndex + 1 >= suggestions.length) {
-        setStep('result');
-      } else {
-        setCurrentIndex((prev) => prev + 1);
-        setStep('card');
-      }
-    },
-    [session, suggestions, currentIndex, translateX, translateY]
-  );
-
-  // Undo decision
-  const handleUndo = () => {
-    if (!session || decisions.length === 0) return;
-    undoDecision(session.id);
-    setDecisions((prev) => prev.slice(0, -1));
-    setCurrentIndex((prev) => Math.max(0, prev - 1));
-    translateX.value = 0;
-    translateY.value = 0;
-  };
-
-  // Pan Responder callbacks for swipe gestures
-  const handleSwipeRight = useCallback(() => {
-    if (suggestions[currentIndex]) {
-      aceitarDecisao(suggestions[currentIndex].suggestedQuadrant);
-    }
-  }, [suggestions, currentIndex, aceitarDecisao]);
-
-  const handleSwipeLeft = useCallback(() => {
-    translateX.value = 0;
-    translateY.value = 0;
-    setStep('quadrant_selector');
-  }, [translateX, translateY]);
-
-  const handleSwipeUp = useCallback(() => {
-    aceitarDecisao('fazer_agora');
-  }, [aceitarDecisao]);
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_, gesture) =>
-          Math.abs(gesture.dx) > 10 || Math.abs(gesture.dy) > 10,
-        onPanResponderMove: (_, gesture) => {
-          translateX.value = gesture.dx;
-          translateY.value = gesture.dy;
-        },
-        onPanResponderRelease: (_, gesture) => {
-          if (gesture.dx > 80) {
-            runOnJS(handleSwipeRight)();
-          } else if (gesture.dx < -80) {
-            runOnJS(handleSwipeLeft)();
-          } else if (gesture.dy < -80) {
-            runOnJS(handleSwipeUp)();
-          } else {
-            translateX.value = withSpring(0);
-            translateY.value = withSpring(0);
-          }
-        },
-      }),
-    [handleSwipeRight, handleSwipeLeft, handleSwipeUp, translateX, translateY]
-  );
-
-  const cardAnimatedStyle = useAnimatedStyle(() => {
-    const rotation = interpolate(
-      translateX.value,
-      [-150, 0, 150],
-      [-15, 0, 15],
-      Extrapolation.CLAMP
-    );
-    return {
-      transform: [
-        { translateX: translateX.value },
-        { translateY: translateY.value },
-        { rotate: `${rotation}deg` },
-      ],
-    };
-  });
-
-  const acceptBadgeStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateX.value, [20, 80], [0, 1], Extrapolation.CLAMP),
-  }));
-
-  const rejectBadgeStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateX.value, [-80, -20], [1, 0], Extrapolation.CLAMP),
-  }));
-
-  const upBadgeStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateY.value, [-80, -20], [1, 0], Extrapolation.CLAMP),
-  }));
-
-  // Current suggestion data
-  const currentSuggestion = suggestions[currentIndex];
-  const currentTask = currentSuggestion
-    ? allTasks.find((t) => t.id === currentSuggestion.taskId)
-    : null;
   const estimatedPomodoros = currentTask?.estimated_pomodoros ?? 1;
-
-  // Header Subtitle for Result
-  const adjustmentsCount = decisions.filter(
-    (d) => d.chosenQuadrant !== d.suggestedQuadrant
-  ).length;
-  const resultSubtitle =
-    adjustmentsCount === 0
-      ? 'NADA ALTERADO AINDA'
-      : `${decisions.length} ${decisions.length === 1 ? 'TAREFA' : 'TAREFAS'} · ${adjustmentsCount} ${adjustmentsCount === 1 ? 'AJUSTE' : 'AJUSTES'}`;
 
   // Helper to render quadrant cell in 2x2 matrix
   const renderMatrixQuadrantCell = (q: Quadrant) => {
@@ -397,7 +164,10 @@ export default function PriorizarModal() {
             Os campos enviados à IA do TaskFlow são:
           </Text>
           <Text style={styles.privacyBullets}>
-            · TÍTULO  · DESCRIÇÃO  · PRAZO  · ESTIMATIVA
+            · TÍTULO  · DESCRIÇÃO  · PRAZO  · ESTIMATIVA  · SUA ROTINA
+          </Text>
+          <Text style={styles.privacyNoticeText}>
+            Esses dados são enviados a um serviço de IA externo. Antes, você responde sozinho a duas perguntas por tarefa (é importante? é urgente?); só depois vê a sugestão da IA.
           </Text>
           <Text style={styles.privacyNoticeText}>
             Suas decisões são usadas apenas para personalizar suas sugestões. Nenhuma tarefa é alterada antes de você tocar em Aplicar.
@@ -438,23 +208,22 @@ export default function PriorizarModal() {
         </View>
       )}
 
-      {/* 4. card & quadrant_selector */}
-      {(step === 'card' || step === 'quadrant_selector') && currentSuggestion && (
+      {/* 4. card: swipe cego (duas perguntas por tarefa) */}
+      {step === 'card' && currentTask && (
         <ScrollView
           style={styles.cardScroll}
           contentContainerStyle={styles.cardScrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Progress Bar */}
           <View style={styles.progressContainer}>
             <View style={styles.progressHeaderRow}>
               <Text style={styles.progressText}>
-                TAREFA {currentIndex + 1} DE {suggestions.length}
+                TAREFA {currentIndex + 1} DE {queue.length} · PERGUNTA {question === 'important' ? 1 : 2} DE 2
               </Text>
-              {decisions.length > 0 && (
+              {(answers.length > 0 || question === 'urgent') && (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Desfazer última decisão"
+                  accessibilityLabel="Desfazer última resposta"
                   hitSlop={12}
                   onPress={handleUndo}
                 >
@@ -466,155 +235,78 @@ export default function PriorizarModal() {
               <View
                 style={[
                   styles.progressFill,
-                  {
-                    width: `${((currentIndex + 1) / suggestions.length) * 100}%`,
-                  },
+                  { width: `${((currentIndex + (question === 'urgent' ? 0.5 : 0)) / queue.length) * 100}%` },
                 ]}
               />
             </View>
           </View>
 
-          {/* Swipeable SuggestionCard */}
           <AnimatedReanimated.View
             {...panResponder.panHandlers}
             style={[styles.cardWrapper, cardAnimatedStyle]}
           >
-            {/* Stamp Badges */}
             <AnimatedReanimated.View style={[styles.stampAccept, acceptBadgeStyle]}>
-              <Text style={styles.stampAcceptText}>✓ ACEITAR</Text>
+              <Text style={styles.stampAcceptText}>✓ SIM</Text>
             </AnimatedReanimated.View>
             <AnimatedReanimated.View style={[styles.stampReject, rejectBadgeStyle]}>
-              <Text style={styles.stampRejectText}>✗ REJEITAR</Text>
-            </AnimatedReanimated.View>
-            <AnimatedReanimated.View style={[styles.stampUp, upBadgeStyle]}>
-              <Text style={styles.stampUpText}>↑ FAZER AGORA</Text>
+              <Text style={styles.stampRejectText}>✗ NÃO</Text>
             </AnimatedReanimated.View>
 
-            {/* Task info */}
             <View style={styles.cardHeader}>
               <Text style={styles.cardTaskId}>
-                T-{String(currentSuggestion.taskId).padStart(3, '0')}
+                T-{String(currentTask.id).padStart(3, '0')}
               </Text>
-              <PriorityBadge priority={currentTask?.priority ?? 'medium'} />
+              <PriorityBadge priority={currentTask.priority ?? 'medium'} />
             </View>
 
-            <Text style={styles.cardTaskTitle}>
-              {currentTask?.title ?? `Tarefa #${currentSuggestion.taskId}`}
-            </Text>
+            <Text style={styles.cardTaskTitle}>{currentTask.title}</Text>
 
             <Text style={styles.cardTaskMeta}>
               {estimatedPomodoros} pom · {estimatedPomodoros * 25} min
             </Text>
 
-            {/* AI Suggestion section */}
             <View style={styles.aiSection}>
-              <View style={styles.aiLabelRow}>
-                <Text style={styles.aiLabel}>SUGESTÃO DA IA</Text>
-                {currentIndex > 0 && (
-                  <Text style={styles.aiAdjustedText}>
-                    ● AJUSTADA PELAS SUAS DECISÕES
-                  </Text>
-                )}
-              </View>
-
               <Text style={styles.quadrantTitle}>
-                {QUADRANT_META[currentSuggestion.suggestedQuadrant].label}
+                {question === 'important' ? 'É importante?' : 'É urgente?'}
               </Text>
               <Text style={styles.quadrantAxes}>
-                {QUADRANT_META[currentSuggestion.suggestedQuadrant].axes}
-              </Text>
-
-              <Text style={styles.aiJustification}>
-                {currentSuggestion.justification}
-              </Text>
-
-              <Text style={styles.aiConfidence}>
-                CONFIANÇA: {currentSuggestion.confidence}%
+                ← NÃO · SIM →
               </Text>
             </View>
           </AnimatedReanimated.View>
 
-          {/* Action buttons */}
           <View style={styles.cardActions}>
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel={question === 'important' ? 'Não é importante' : 'Não é urgente'}
               style={styles.rejectButton}
-              onPress={() => setStep('quadrant_selector')}
+              onPress={() => responder(false)}
             >
-              <Text style={styles.rejectButtonText}>← REJEITAR</Text>
+              <Text style={styles.rejectButtonText}>← NÃO</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              style={styles.nowButton}
-              onPress={() => aceitarDecisao('fazer_agora')}
-            >
-              <Text style={styles.nowButtonText}>↑ FAZER AGORA</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
+              accessibilityLabel={question === 'important' ? 'Sim, é importante' : 'Sim, é urgente'}
               style={styles.acceptButton}
-              onPress={() => aceitarDecisao(currentSuggestion.suggestedQuadrant)}
+              onPress={() => responder(true)}
             >
-              <Text style={styles.acceptButtonText}>ACEITAR →</Text>
+              <Text style={styles.acceptButtonText}>SIM →</Text>
             </Pressable>
           </View>
         </ScrollView>
       )}
 
-      {/* Quadrant Selector Bottom Sheet */}
-      <Modal
-        visible={step === 'quadrant_selector'}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setStep('card')}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>ESCOLHA O QUADRANTE</Text>
-            <Text style={styles.modalSubtitle}>
-              SUGESTÃO REJEITADA:{' '}
-              {currentSuggestion
-                ? QUADRANT_META[currentSuggestion.suggestedQuadrant].label.toUpperCase()
-                : ''}
-            </Text>
-
-            <View style={styles.quadrantGrid}>
-              {(['fazer_agora', 'agendar', 'delegar', 'eliminar'] as Quadrant[]).map(
-                (q) => {
-                  const isOriginal =
-                    currentSuggestion?.suggestedQuadrant === q;
-                  const meta = QUADRANT_META[q];
-
-                  return (
-                    <Pressable
-                      key={q}
-                      style={[
-                        styles.quadrantGridCell,
-                        isOriginal && styles.quadrantGridCellOriginal,
-                      ]}
-                      onPress={() => aceitarDecisao(q)}
-                    >
-                      {isOriginal && (
-                        <Text style={styles.originalBadge}>SUGESTÃO DA IA</Text>
-                      )}
-                      <Text style={styles.gridCellTitle}>{meta.label}</Text>
-                      <Text style={styles.gridCellAxes}>{meta.axes}</Text>
-                    </Pressable>
-                  );
-                }
-              )}
-            </View>
-
-            <Pressable
-              accessibilityRole="button"
-              style={styles.secondaryButton}
-              onPress={() => setStep('card')}
-            >
-              <Text style={styles.secondaryButtonText}>CANCELAR</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+      {/* 4b. compare: minha lista × lista da IA */}
+      {step === 'compare' && (
+        <CompareLists
+          decisions={decisions}
+          tasks={allTasks}
+          source={outcome?.source ?? 'rules'}
+          onChoose={onChoose}
+          onChooseAll={onChooseAll}
+          onContinue={() => setStep('result')}
+        />
+      )}
 
       {/* 5. result & applied */}
       {(step === 'result' || step === 'applied') && (
@@ -661,34 +353,21 @@ export default function PriorizarModal() {
               <Pressable
                 accessibilityRole="button"
                 style={styles.primaryButton}
-                onPress={() => {
-                  if (session) {
-                    applyPrioritization(session.id);
-                    setStep('applied');
-                  }
-                }}
+                onPress={applyResult}
               >
                 <Text style={styles.primaryButtonText}>APLICAR</Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
                 style={styles.secondaryButton}
-                onPress={() => {
-                  setCurrentIndex(0);
-                  setStep('card');
-                }}
+                onPress={() => setStep('compare')}
               >
                 <Text style={styles.secondaryButtonText}>REVISAR</Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
                 style={styles.discardButton}
-                onPress={() => {
-                  if (session) {
-                    discardPrioritization(session.id);
-                  }
-                  router.back();
-                }}
+                onPress={discardResult}
               >
                 <Text style={styles.discardButtonText}>DESCARTAR</Text>
               </Pressable>
@@ -720,7 +399,7 @@ export default function PriorizarModal() {
           <Pressable
             accessibilityRole="button"
             style={styles.primaryButton}
-            onPress={iniciarPriorizacao}
+            onPress={tentarIaDeNovo}
           >
             <Text style={styles.primaryButtonText}>TENTAR NOVAMENTE</Text>
           </Pressable>

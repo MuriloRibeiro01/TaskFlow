@@ -1,66 +1,41 @@
-import React, { useCallback, useState } from 'react';
-import { Appearance, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ColorTheme, Fonts, Spacing } from '@/theme';
 import { useTheme } from '@/hooks/useTheme';
-import { useAuth } from '@/database/context/auth_context';
-import { getAllTasks } from '@/database/tasks';
-import { Task } from '@/types/task.types';
-import { useNetInfo } from '@react-native-community/netinfo';
-import { useToast } from '@/components/notifications/Toast';
-
-function getInitials(name?: string | null): string {
-  if (!name) return 'U';
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return 'U';
-  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
+import { useProfileViewModel } from '@/hooks/useProfileViewModel';
 
 export default function Perfil() {
-  const { colors, colorScheme } = useTheme();
+  const { colors } = useTheme();
   const styles = getStyles(colors);
-  const { user, signOut } = useAuth();
-  const { showToast } = useToast();
-  const netInfo = useNetInfo();
-  const [tasks, setTasks] = useState<Task[]>([]);
-
-  const [focusDuration, setFocusDuration] = useState(25);
-  const [breakDuration, setBreakDuration] = useState(5);
-  const [soundOn, setSoundOn] = useState(true);
-  const [vibOn, setVibOn] = useState(true);
-
-  useFocusEffect(
-    useCallback(() => {
-      const all = getAllTasks(user?.id ?? '');
-      setTasks(all);
-    }, [user?.id])
-  );
-
-  const today = new Date().toISOString().substring(0, 10);
-  const todayDone = tasks.filter(
-    (t) => t.status === 'done' && t.completed_at?.substring(0, 10) === today
-  );
-  const pomToday = todayDone.reduce(
-    (acc, t) => acc + (t.completed_pomodoros ?? 0),
-    0
-  );
-  const doneToday = todayDone.length;
-
-  const isOnline = netInfo.isConnected === true;
-  const syncMeta = isOnline ? 'Sincronizado' : 'Sem conexão';
-
-  const avatarUrl = user?.user_metadata?.avatar_url;
-  const fullName = user?.user_metadata?.full_name ?? 'Usuário';
-  const email = user?.email ?? '';
-  const provider = String(
-    user?.app_metadata?.provider ?? user?.identities?.[0]?.provider ?? ''
-  ).toUpperCase();
-
-  const handleSignOut = async () => {
-    await signOut();
-  };
+  const {
+    colorScheme,
+    routine,
+    setRoutine,
+    saveRoutine,
+    focusDuration,
+    setFocusDuration,
+    breakDuration,
+    setBreakDuration,
+    soundOn,
+    setSoundOn,
+    vibOn,
+    setVibOn,
+    pomToday,
+    doneToday,
+    isOnline,
+    syncMeta,
+    avatarUrl,
+    fullName,
+    email,
+    provider,
+    initials,
+    handleSignOut,
+    setColorScheme,
+    navigateToHistorico,
+    navigateToEstatisticas,
+    showExportToast,
+  } = useProfileViewModel();
 
   return (
     <View style={styles.container}>
@@ -81,7 +56,7 @@ export default function Perfil() {
             <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarInitials}>{getInitials(fullName)}</Text>
+              <Text style={styles.avatarInitials}>{initials}</Text>
             </View>
           )}
           <View style={styles.userInfo}>
@@ -136,6 +111,26 @@ export default function Perfil() {
           </View>
         </View>
 
+        {/* 2b2. Minha rotina (contexto para a priorização com IA) */}
+        <View>
+          <Text style={styles.sectionLabel}>MINHA ROTINA</Text>
+          <TextInput
+            accessibilityLabel="Minha rotina"
+            style={styles.routineInput}
+            multiline
+            maxLength={2000}
+            value={routine}
+            onChangeText={setRoutine}
+            onBlur={saveRoutine}
+            placeholder="Ex.: aulas de seg a sex à noite; estudo melhor de manhã"
+            placeholderTextColor={colors.cinza}
+          />
+          <Text style={styles.routineHint}>
+            Horários de aula ou trabalho e as melhores horas para estudar. Este texto é enviado ao
+            serviço de IA para sugerir a prioridade das tarefas.
+          </Text>
+        </View>
+
         {/* 2c. Seção de navegação (sem label) */}
         <View style={styles.navSection}>
           <Pressable
@@ -145,7 +140,7 @@ export default function Perfil() {
               styles.navItem,
               pressed && { backgroundColor: colors.papel3 },
             ]}
-            onPress={() => router.push('/historico')}
+            onPress={navigateToHistorico}
           >
             <Text style={styles.navText}>Histórico</Text>
             <Text style={styles.navChevron}>›</Text>
@@ -157,7 +152,7 @@ export default function Perfil() {
               styles.navItem,
               pressed && { backgroundColor: colors.papel3 },
             ]}
-            onPress={() => router.push('/estatisticas')}
+            onPress={navigateToEstatisticas}
           >
             <Text style={styles.navText}>Estatísticas</Text>
             <Text style={styles.navChevron}>›</Text>
@@ -229,7 +224,7 @@ export default function Perfil() {
                       ? { borderColor: colors.tinta, backgroundColor: colors.tinta }
                       : { borderColor: colors.cinza, backgroundColor: 'transparent' },
                   ]}
-                  onPress={() => Appearance.setColorScheme('light')}
+                  onPress={() => setColorScheme('light')}
                 >
                   <Text
                     style={[
@@ -249,7 +244,7 @@ export default function Perfil() {
                       ? { borderColor: colors.tinta, backgroundColor: colors.tinta }
                       : { borderColor: colors.cinza, backgroundColor: 'transparent' },
                   ]}
-                  onPress={() => Appearance.setColorScheme('dark')}
+                  onPress={() => setColorScheme('dark')}
                 >
                   <Text
                     style={[
@@ -319,7 +314,7 @@ export default function Perfil() {
             accessibilityRole="button"
             accessibilityLabel="Exportar relatório (PDF)"
             style={styles.exportButton}
-            onPress={() => showToast('Em breve', 'info')}
+            onPress={showExportToast}
           >
             <Text style={styles.exportButtonText}>Exportar relatório (PDF)</Text>
           </Pressable>
@@ -415,6 +410,21 @@ function createStyles(colors: ColorTheme) {
       letterSpacing: 0.14,
       color: colors.cinza,
       textTransform: 'uppercase',
+    },
+    routineInput: {
+      minHeight: 96,
+      padding: Spacing.sp3,
+      backgroundColor: colors.papel2,
+      color: colors.tinta,
+      fontFamily: Fonts.barlow,
+      fontSize: 15,
+      textAlignVertical: 'top',
+    },
+    routineHint: {
+      fontFamily: Fonts.mono,
+      fontSize: 9,
+      color: colors.cinza,
+      marginTop: Spacing.sp2,
     },
     sectionLabel: {
       fontFamily: Fonts.mono,

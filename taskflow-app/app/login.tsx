@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import {
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   StatusBar,
   StyleSheet,
   View,
   Text,
+  TextInput,
   Pressable,
+  ScrollView,
 } from 'react-native';
 import { useAuth } from '@/database/context/auth_context';
 
@@ -19,30 +23,52 @@ const colors = {
 };
 
 export default function LoginScreen() {
-  const { signIn, isLoading } = useAuth();
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const { signIn, register, signInAsGuest, isLoading } = useAuth();
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // O redirecionamento após o login é feito pelo Stack.Protected em app/_layout.tsx
-  const handleLogin = async () => {
+  const handleSubmit = async () => {
+    if (!email.trim() || !password) return;
     try {
-      setIsLoggingIn(true);
-      await signIn();
-    } catch (error) {
-      console.error('Login error:', error);
-      Alert.alert('Erro ao entrar', 'Não foi possível entrar com o Google. Tente novamente.');
+      setIsSubmitting(true);
+      if (mode === 'login') {
+        await signIn(email.trim(), password);
+      } else {
+        await register(email.trim(), password);
+      }
+    } catch (error: any) {
+      const msg =
+        error?.status === 401 ? 'Email ou senha incorretos.' :
+        error?.status === 409 ? 'Este email já está cadastrado.' :
+        error?.status === 400 ? 'Senha deve ter no mínimo 8 caracteres.' :
+        'Não foi possível entrar. Tente novamente.';
+      Alert.alert('Erro', msg);
     } finally {
-      setIsLoggingIn(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleAppleLogin = () => {
-    Alert.alert('Em breve', 'O login com Apple será disponibilizado nesta tela.');
+  const toggleMode = () => {
+    setMode(m => m === 'login' ? 'register' : 'login');
+    setPassword('');
   };
 
+  const busy = isSubmitting || isLoading;
+  const label = mode === 'login' ? 'ENTRAR' : 'CRIAR CONTA';
+
   return (
-    <View style={styles.safeArea}>
+    <KeyboardAvoidingView
+      style={styles.safeArea}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <StatusBar barStyle="light-content" backgroundColor={colors.tinta} />
-      <View style={styles.screen}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.screen}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.content}>
           <View>
             <Text accessibilityRole="header" style={styles.brand}>
@@ -55,28 +81,66 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.authentication}>
-            <Text style={styles.sectionLabel}>ENTRAR NA SUA CONTA</Text>
+            <Text style={styles.sectionLabel}>
+              {mode === 'login' ? 'ENTRAR NA SUA CONTA' : 'CRIAR UMA CONTA'}
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor={colors.grey}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              editable={!busy}
+            />
+
+            <TextInput
+              style={[styles.input, styles.inputSpacing]}
+              placeholder="Senha (mín. 8 caracteres)"
+              placeholderTextColor={colors.grey}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              textContentType={mode === 'register' ? 'newPassword' : 'password'}
+              editable={!busy}
+            />
+
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Continuar com Google"
-              style={({ pressed }) => [styles.googleButton, pressed && !isLoggingIn && styles.buttonPressed]}
-              onPress={handleLogin}
-              disabled={isLoggingIn || isLoading}
+              accessibilityLabel={label}
+              style={({ pressed }) => [styles.primaryButton, (pressed || busy) && styles.buttonPressed]}
+              onPress={handleSubmit}
+              disabled={busy}
             >
-              <Text style={styles.googleButtonText}>
-                {isLoggingIn || isLoading ? 'Conectando...' : 'Continuar com Google'}
+              <Text style={styles.primaryButtonText}>
+                {busy ? 'Aguarde...' : label}
               </Text>
             </Pressable>
+
+            <View style={styles.secondaryRule} />
+
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Continuar com Apple"
-              style={({ pressed }) => [styles.appleButton, pressed && styles.buttonPressed]}
-              onPress={handleAppleLogin}
-              disabled={isLoggingIn || isLoading}
+              style={({ pressed }) => [pressed && styles.buttonPressed]}
+              onPress={toggleMode}
             >
-              <Text style={styles.appleButtonText}>Continuar com Apple</Text>
+              <Text style={styles.toggleText}>
+                {mode === 'login' ? 'Criar conta' : 'Já tenho conta'}
+              </Text>
             </Pressable>
-            <View style={styles.secondaryRule} />
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Entrar sem login"
+              style={({ pressed }) => [pressed && styles.buttonPressed]}
+              onPress={signInAsGuest}
+            >
+              <Text style={styles.guestText}>Entrar sem login</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -84,24 +148,27 @@ export default function LoginScreen() {
           MICAEL · MURILO · PAULO · PEDRO B. · PEDRO T.{"\n"}
           VINÍCIUS O. · VINÍCIUS R.
         </Text>
-      </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.tinta,
   },
-  screen: {
+  scroll: {
     flex: 1,
     backgroundColor: colors.paper,
     borderTopWidth: 2,
     borderTopColor: colors.red,
   },
+  screen: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
+  },
   content: {
-    flex: 1,
     paddingHorizontal: 40,
     paddingTop: 72,
   },
@@ -146,17 +213,22 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     marginBottom: 14,
   },
-  googleButton: {
+  input: {
+    backgroundColor: colors.paperMuted,
+    borderColor: '#D7D2C8',
+    borderWidth: 1,
+    color: colors.tinta,
+    fontFamily: 'IBMPlexMono_400Regular',
+    fontSize: 14,
+    height: 58,
+    paddingHorizontal: 16,
+  },
+  inputSpacing: {
+    marginTop: 10,
+  },
+  primaryButton: {
     alignItems: 'center',
     backgroundColor: colors.tinta,
-    height: 58,
-    justifyContent: 'center',
-  },
-  appleButton: {
-    alignItems: 'center',
-    backgroundColor: colors.paper,
-    borderColor: colors.tinta,
-    borderWidth: 1,
     height: 58,
     justifyContent: 'center',
     marginTop: 14,
@@ -164,14 +236,8 @@ const styles = StyleSheet.create({
   buttonPressed: {
     opacity: 0.72,
   },
-  googleButtonText: {
+  primaryButtonText: {
     color: colors.paper,
-    fontFamily: 'BarlowCondensed_700Bold',
-    fontSize: 19,
-    lineHeight: 22,
-  },
-  appleButtonText: {
-    color: colors.tinta,
     fontFamily: 'BarlowCondensed_700Bold',
     fontSize: 19,
     lineHeight: 22,
@@ -179,7 +245,25 @@ const styles = StyleSheet.create({
   secondaryRule: {
     backgroundColor: '#D7D2C8',
     height: StyleSheet.hairlineWidth,
+    marginTop: 20,
+  },
+  toggleText: {
+    color: colors.graphite,
+    fontFamily: 'IBMPlexMono_400Regular',
+    fontSize: 11,
+    lineHeight: 14,
     marginTop: 16,
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+  },
+  guestText: {
+    color: colors.grey,
+    fontFamily: 'IBMPlexMono_400Regular',
+    fontSize: 11,
+    lineHeight: 14,
+    marginTop: 10,
+    textAlign: 'center',
+    textDecorationLine: 'underline',
   },
   credits: {
     color: colors.grey,

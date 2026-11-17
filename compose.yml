@@ -19,7 +19,7 @@ services:
       timeout: 3s
       retries: 10
 
-  # API Spring Boot (a versão NestJS continua em ./taskflow-api, fora do compose)
+  # API Spring Boot
   api:
     build:
       context: ./taskflow-api-spring
@@ -32,10 +32,10 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      # Login sem Google para testes; desligado se não estiver no .env
       ENABLE_DEV_LOGIN: ${ENABLE_DEV_LOGIN:-false}
-      # Client IDs do Google (Web, Android, iOS) separados por vírgula; sem eles POST /auth/google responde 503
-      GOOGLE_CLIENT_IDS: ${GOOGLE_CLIENT_IDS:-}
+      # IA da priorização; sem a chave a API usa só a regra por prazo e prioridade
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-claude-haiku-5-5}
     depends_on:
       # O Flyway roda na inicialização: a API só sobe com o banco aceitando conexões.
       db:

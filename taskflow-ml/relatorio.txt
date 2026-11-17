@@ -1,0 +1,7 @@
+Tarefas únicas: 1056
+Distribuição: {'medium': 469, 'high': 321, 'low': 266}
+Chute (sempre a classe mais comum): 44.4%
+Acerto, validação cruzada: 63.1%
+Acerto, validação com títulos parecidos separados: 49.9%
+Termos no vocabulário: 5256
+Observação: a planilha é sintética (gerada por IA); o acerto não vale para tarefas reais.

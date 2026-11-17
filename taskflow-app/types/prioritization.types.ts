@@ -15,6 +15,8 @@ export const QUADRANT_META: Record<Quadrant, QuadrantMeta> = {
 
 export interface SuggestionResult {
   taskId: number;
+  importance: number;      // 0–100
+  urgency: number;         // 0–100
   suggestedQuadrant: Quadrant;
   confidence: number;      // 0–100
   justification: string;
@@ -32,7 +34,11 @@ export interface PrioritizationDecision {
   id: number;
   sessionId: number;
   taskId: number;
-  suggestedQuadrant: Quadrant | null;
-  chosenQuadrant: Quadrant;
+  userQuadrant: Quadrant | null;      // swipe cego do usuário
+  suggestedQuadrant: Quadrant | null; // sugestão da IA
+  chosenQuadrant: Quadrant;           // escolha final (usada ao aplicar)
   confidence: number | null;
+  aiImportance: number | null;
+  aiUrgency: number | null;
+  aiJustification: string | null;
 }

@@ -2,6 +2,7 @@ import { Quadrant } from './prioritization.types';
 
 export interface Task {
     id: number;
+    remote_id?: string | null;
     title: string;
     description: string;
     priority: string;
