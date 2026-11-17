@@ -123,13 +123,23 @@ export default function NovaTarefa() {
       return;
     }
 
+    const dueDate = (() => {
+      if (!useDate && !useHour) return null;
+      if (useHour) return deadline.toISOString();
+      // Store local date as YYYY-MM-DD so "Amanhã" filter matches correctly
+      const y = deadline.getFullYear();
+      const m = String(deadline.getMonth() + 1).padStart(2, '0');
+      const d = String(deadline.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    })();
+
     if (isEditing && editingId) {
       editTask(editingId, {
         title: title.trim(),
         description: description.trim(),
         priority,
         estimated_pomodoros: usePomodoro ? estimatedPomodoros : undefined,
-        due_date: useDate || useHour ? deadline.toISOString() : null,
+        due_date: dueDate,
       });
     } else {
       createTask({
@@ -137,7 +147,7 @@ export default function NovaTarefa() {
         description: description.trim(),
         priority,
         estimated_pomodoros: usePomodoro ? estimatedPomodoros : undefined,
-        due_date: useDate || useHour ? deadline.toISOString() : undefined,
+        due_date: dueDate ?? undefined,
         user_id: user?.id ?? '',
       });
     }

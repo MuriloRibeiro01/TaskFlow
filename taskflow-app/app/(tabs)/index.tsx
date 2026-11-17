@@ -181,15 +181,27 @@ function SwipeableTaskCard({
     onDelete();
   };
 
+  const requestComplete = () => {
+    swipeableRef.current?.close();
+    onCheck();
+  };
+
   return (
     <Swipeable
       ref={swipeableRef}
+      overshootLeft={false}
       overshootRight={false}
+      leftThreshold={40}
       rightThreshold={40}
-      renderRightActions={() => (
+      renderLeftActions={() => (
         <Pressable style={styles.swipeDeleteAction} onPress={requestDeletion}>
           <Trash2 size={19} color={colors.textoClaro} />
           <Text style={styles.swipeDeleteText}>EXCLUIR</Text>
+        </Pressable>
+      )}
+      renderRightActions={() => (
+        <Pressable style={styles.swipeCompleteAction} onPress={requestComplete}>
+          <Text style={styles.swipeCompleteText}>CONCLUIR</Text>
         </Pressable>
       )}
     >
@@ -540,12 +552,25 @@ function createStyles(colors: ColorTheme) {
     swipeDeleteAction: {
       width: 104,
       marginBottom: Spacing.sp5,
-      backgroundColor: colors.vermelho,
+      backgroundColor: colors.tinta,
       alignItems: 'center',
       justifyContent: 'center',
       gap: Spacing.sp1,
     },
     swipeDeleteText: {
+      fontFamily: Fonts.mono,
+      fontSize: FontSize.caption,
+      color: colors.textoClaro,
+      letterSpacing: 0.3,
+    },
+    swipeCompleteAction: {
+      width: 104,
+      marginBottom: Spacing.sp5,
+      backgroundColor: colors.vermelho,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    swipeCompleteText: {
       fontFamily: Fonts.mono,
       fontSize: FontSize.caption,
       color: colors.textoClaro,

@@ -158,7 +158,7 @@ export default function Timer() {
                     index < completedCycles && styles.cycleDotDone,
                     index === completedCycles
                       && !isFinished
-                      && mode === 'focus'
+                      && !isBreak
                       && styles.cycleDotCurrent,
                   ]}
                 />
@@ -232,7 +232,7 @@ export default function Timer() {
                 key={task.id}
                 task={task}
                 selected
-                active={mode === 'focus' && task.id === activeTask?.id}
+                active={!isBreak && task.id === activeTask?.id}
               />
             ))}
             {completedSelectedTasks.length > 0 && (
