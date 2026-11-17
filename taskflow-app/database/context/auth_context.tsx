@@ -5,14 +5,14 @@ import NetInfo from "@react-native-community/netinfo";
 import { SyncService } from "../sync/sync.service";
 import { onLocalChange } from "../sync/sync_trigger";
 import { logout, saveLocalUser } from "../services/session";
-import { userAuthentication } from "../services/auth";
-import { getSession, loginDev, onSessionExpired, type AuthUser } from "../api/client";
+import { getSession, loginDev, loginWithEmail, registerWithEmail, onSessionExpired, type AuthUser } from "../api/client";
 
 interface AuthContextData {
     user: AuthUser | null;
     // true apenas enquanto a sessão salva é restaurada na abertura do app
     isLoading: boolean;
-    signIn: () => Promise<void>;
+    signIn: (email: string, password: string) => Promise<void>;
+    register: (email: string, password: string) => Promise<void>;
     signInAsGuest: () => Promise<void>;
     signOut: () => Promise<void>;
 }
@@ -63,11 +63,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, [user?.id]);
 
-    const signIn = async () => {
-        const user = await userAuthentication();
-        if (user) {
-            setUser(user);
-        }
+    const signIn = async (email: string, password: string) => {
+        const user = await loginWithEmail(email, password);
+        saveLocalUser(user);
+        setUser(user);
+    };
+
+    const register = async (email: string, password: string) => {
+        const user = await registerWithEmail(email, password);
+        saveLocalUser(user);
+        setUser(user);
     };
 
     const signInAsGuest = async () => {
@@ -81,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ user, isLoading: loading, signIn, signInAsGuest, signOut }}>
+        <AuthContext.Provider value={{ user, isLoading: loading, signIn, register, signInAsGuest, signOut }}>
             {children}
         </AuthContext.Provider>
     );
