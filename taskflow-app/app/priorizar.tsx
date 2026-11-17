@@ -1,58 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React from 'react';
 import {
-  Alert,
   Animated,
-  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
-import NetInfo from '@react-native-community/netinfo';
-import AnimatedReanimated, {
-  Extrapolation,
-  interpolate,
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import { router } from 'expo-router';
+import AnimatedReanimated from 'react-native-reanimated';
 import { Colors, FontSize, Fonts, Spacing } from '@/theme';
-import { useAuth } from '@/database/context/auth_context';
-import { getAllTasks } from '@/database/tasks';
-import {
-  applyPrioritization,
-  chooseAll,
-  chooseFinal,
-  decideTask,
-  discardPrioritization,
-  getDecisionsForSession,
-  startSession,
-} from '@/database/services/prioritization.service';
-import { requestSuggestions, SuggestionsOutcome } from '@/database/services/ai-prioritizer';
-import { quadrantFromAnswers } from '@/database/services/prioritization.compare';
 import { CompareLists } from '@/components/prioritization/CompareLists';
-import { Task } from '@/types/task.types';
-import {
-  PrioritizationDecision,
-  PrioritizationSession,
-  QUADRANT_META,
-  Quadrant,
-  SuggestionResult,
-} from '@/types/prioritization.types';
-
-type PriorizacaoStep =
-  | 'no_connection'
-  | 'privacy_notice'
-  | 'syncing'
-  | 'generating'
-  | 'card'
-  | 'compare'
-  | 'result'
-  | 'applied'
-  | 'ai_failure';
+import { QUADRANT_META, Quadrant } from '@/types/prioritization.types';
+import { usePrioritizationViewModel } from '@/hooks/usePrioritizationViewModel';
 
 function PriorityBadge({ priority }: { priority: string }) {
   const map: Record<string, { symbol: string; label: string; color: string; bg: string }> = {
@@ -74,241 +34,35 @@ function PriorityBadge({ priority }: { priority: string }) {
 }
 
 export default function PriorizarModal() {
-  const { user } = useAuth();
-  const userId = user?.id ?? '';
+  const {
+    step,
+    queue,
+    currentIndex,
+    question,
+    answers,
+    outcome,
+    decisions,
+    allTasks,
+    skeletonOpacity,
+    panResponder,
+    cardAnimatedStyle,
+    acceptBadgeStyle,
+    rejectBadgeStyle,
+    currentTask,
+    resultSubtitle,
+    handleRetryConnection,
+    iniciarPriorizacao,
+    tentarIaDeNovo,
+    responder,
+    handleUndo,
+    applyResult,
+    discardResult,
+    onChoose,
+    onChooseAll,
+    setStep,
+  } = usePrioritizationViewModel();
 
-  const [step, setStep] = useState<PriorizacaoStep>('privacy_notice');
-  const [session, setSession] = useState<PrioritizationSession | null>(null);
-  const [queue, setQueue] = useState<Task[]>([]); // tarefas pendentes a priorizar
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [question, setQuestion] = useState<'important' | 'urgent'>('important');
-  const [isImportant, setIsImportant] = useState(false);
-  const [answers, setAnswers] = useState<{ taskId: number; quadrant: Quadrant }[]>([]);
-  const [outcome, setOutcome] = useState<SuggestionsOutcome | null>(null);
-  const [decisions, setDecisions] = useState<PrioritizationDecision[]>([]);
-  const [allTasks, setAllTasks] = useState<Task[]>([]);
-  // Pedido à IA disparado ao sair do aviso de privacidade; só é aguardado quando os swipes acabam.
-  const aiRequest = useRef<Promise<SuggestionsOutcome> | null>(null);
-
-  // Skeleton pulse animation
-  const skeletonOpacity = useRef(new Animated.Value(0.4)).current;
-
-  // Reanimated values for card swipe gesture
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-
-  // Check connection on mount
-  useEffect(() => {
-    async function checkConnection() {
-      try {
-        const state = await NetInfo.fetch();
-        if (state.isConnected === false) {
-          setStep('no_connection');
-        } else {
-          setStep('privacy_notice');
-        }
-      } catch {
-        setStep('privacy_notice');
-      }
-    }
-    checkConnection();
-  }, []);
-
-  // Load tasks on focus
-  useFocusEffect(
-    useCallback(() => {
-      if (userId) {
-        setAllTasks(getAllTasks(userId));
-      }
-    }, [userId])
-  );
-
-  // Skeleton loop animation
-  useEffect(() => {
-    if (step === 'syncing' || step === 'generating') {
-      const loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(skeletonOpacity, {
-            toValue: 1,
-            duration: 650,
-            useNativeDriver: true,
-          }),
-          Animated.timing(skeletonOpacity, {
-            toValue: 0.4,
-            duration: 650,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      loop.start();
-      return () => loop.stop();
-    }
-  }, [step, skeletonOpacity]);
-
-  // Retry connection
-  const handleRetryConnection = async () => {
-    const state = await NetInfo.fetch();
-    if (state.isConnected !== false) {
-      setStep('privacy_notice');
-    }
-  };
-
-  // Start prioritization flow
-  const iniciarPriorizacao = async () => {
-    setStep('syncing');
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    const tasks = getAllTasks(userId).filter((t) => t.status !== 'done');
-    setAllTasks(getAllTasks(userId));
-
-    if (tasks.length === 0) {
-      Alert.alert('Sem tarefas pendentes', 'Você não possui tarefas pendentes para priorizar.');
-      router.back();
-      return;
-    }
-
-    setSession(startSession(userId));
-    setQueue(tasks);
-    setCurrentIndex(0);
-    setQuestion('important');
-    setAnswers([]);
-    setDecisions([]);
-    setOutcome(null);
-    aiRequest.current = requestSuggestions(tasks);
-    aiRequest.current.catch(() => {}); // o erro é tratado quando a promessa for aguardada
-    translateX.value = 0;
-    translateY.value = 0;
-    setStep('card');
-  };
-
-  // Espera a IA, grava as decisões (swipe + sugestão) e abre a comparação.
-  const finalizarSwipes = async (finalAnswers: { taskId: number; quadrant: Quadrant }[]) => {
-    if (!session) return;
-    setStep('generating');
-    try {
-      const result = await aiRequest.current!;
-      finalAnswers.forEach((a) => {
-        const ai = result.suggestions.find((s) => s.taskId === a.taskId) ?? null;
-        decideTask(session.id, a.taskId, a.quadrant, ai);
-      });
-      setOutcome(result);
-      setDecisions(getDecisionsForSession(session.id));
-      setStep('compare');
-    } catch {
-      setStep('ai_failure');
-    }
-  };
-
-  const tentarIaDeNovo = async () => {
-    aiRequest.current = requestSuggestions(queue);
-    aiRequest.current.catch(() => {});
-    await finalizarSwipes(answers);
-  };
-
-  // Responde a pergunta atual (sim/não). Na segunda pergunta fecha a tarefa.
-  const responder = useCallback(
-    (yes: boolean) => {
-      const current = queue[currentIndex];
-      if (!current) return;
-      translateX.value = 0;
-      translateY.value = 0;
-
-      if (question === 'important') {
-        setIsImportant(yes);
-        setQuestion('urgent');
-        return;
-      }
-
-      const nextAnswers = [...answers, { taskId: current.id, quadrant: quadrantFromAnswers(isImportant, yes) }];
-      setAnswers(nextAnswers);
-      if (currentIndex + 1 >= queue.length) {
-        finalizarSwipes(nextAnswers);
-      } else {
-        setCurrentIndex(currentIndex + 1);
-        setQuestion('important');
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [queue, currentIndex, question, isImportant, answers, session]
-  );
-
-  // Desfazer: volta uma pergunta (ou uma tarefa, para a pergunta "urgente" dela).
-  const handleUndo = () => {
-    translateX.value = 0;
-    translateY.value = 0;
-    if (question === 'urgent') {
-      setQuestion('important');
-    } else if (answers.length > 0) {
-      const last = answers[answers.length - 1];
-      setAnswers(answers.slice(0, -1));
-      setCurrentIndex(currentIndex - 1);
-      setIsImportant(last.quadrant === 'fazer_agora' || last.quadrant === 'agendar');
-      setQuestion('urgent');
-    }
-  };
-
-  const handleSwipeRight = useCallback(() => responder(true), [responder]);
-  const handleSwipeLeft = useCallback(() => responder(false), [responder]);
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_, gesture) =>
-          Math.abs(gesture.dx) > 10 || Math.abs(gesture.dy) > 10,
-        onPanResponderMove: (_, gesture) => {
-          translateX.value = gesture.dx;
-          translateY.value = gesture.dy;
-        },
-        onPanResponderRelease: (_, gesture) => {
-          if (gesture.dx > 80) {
-            runOnJS(handleSwipeRight)();
-          } else if (gesture.dx < -80) {
-            runOnJS(handleSwipeLeft)();
-          } else {
-            translateX.value = withSpring(0);
-            translateY.value = withSpring(0);
-          }
-        },
-      }),
-    [handleSwipeRight, handleSwipeLeft, translateX, translateY]
-  );
-
-  const cardAnimatedStyle = useAnimatedStyle(() => {
-    const rotation = interpolate(
-      translateX.value,
-      [-150, 0, 150],
-      [-15, 0, 15],
-      Extrapolation.CLAMP
-    );
-    return {
-      transform: [
-        { translateX: translateX.value },
-        { translateY: translateY.value },
-        { rotate: `${rotation}deg` },
-      ],
-    };
-  });
-
-  const acceptBadgeStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateX.value, [20, 80], [0, 1], Extrapolation.CLAMP),
-  }));
-
-  const rejectBadgeStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateX.value, [-80, -20], [1, 0], Extrapolation.CLAMP),
-  }));
-
-  // Current suggestion data
-  const currentTask = queue[currentIndex] ?? null;
   const estimatedPomodoros = currentTask?.estimated_pomodoros ?? 1;
-
-  // Header Subtitle for Result
-  const adjustmentsCount = decisions.filter(
-    (d) => d.chosenQuadrant !== d.userQuadrant
-  ).length;
-  const resultSubtitle =
-    adjustmentsCount === 0
-      ? 'NADA ALTERADO AINDA'
-      : `${decisions.length} ${decisions.length === 1 ? 'TAREFA' : 'TAREFAS'} · ${adjustmentsCount} ${adjustmentsCount === 1 ? 'AJUSTE' : 'AJUSTES'}`;
 
   // Helper to render quadrant cell in 2x2 matrix
   const renderMatrixQuadrantCell = (q: Quadrant) => {
@@ -548,16 +302,8 @@ export default function PriorizarModal() {
           decisions={decisions}
           tasks={allTasks}
           source={outcome?.source ?? 'rules'}
-          onChoose={(taskId, quadrant) => {
-            if (!session) return;
-            chooseFinal(session.id, taskId, quadrant);
-            setDecisions(getDecisionsForSession(session.id));
-          }}
-          onChooseAll={(side) => {
-            if (!session) return;
-            chooseAll(session.id, side);
-            setDecisions(getDecisionsForSession(session.id));
-          }}
+          onChoose={onChoose}
+          onChooseAll={onChooseAll}
           onContinue={() => setStep('result')}
         />
       )}
@@ -607,12 +353,7 @@ export default function PriorizarModal() {
               <Pressable
                 accessibilityRole="button"
                 style={styles.primaryButton}
-                onPress={() => {
-                  if (session) {
-                    applyPrioritization(session.id);
-                    setStep('applied');
-                  }
-                }}
+                onPress={applyResult}
               >
                 <Text style={styles.primaryButtonText}>APLICAR</Text>
               </Pressable>
@@ -626,12 +367,7 @@ export default function PriorizarModal() {
               <Pressable
                 accessibilityRole="button"
                 style={styles.discardButton}
-                onPress={() => {
-                  if (session) {
-                    discardPrioritization(session.id);
-                  }
-                  router.back();
-                }}
+                onPress={discardResult}
               >
                 <Text style={styles.discardButtonText}>DESCARTAR</Text>
               </Pressable>

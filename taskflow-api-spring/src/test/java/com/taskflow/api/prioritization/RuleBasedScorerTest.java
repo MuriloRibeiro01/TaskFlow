@@ -1,10 +1,10 @@
-package com.taskflow.api.prioritization;
+package com.taskflow.api.application.prioritization;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.taskflow.api.task.Priority;
-import com.taskflow.api.task.Quadrant;
-import com.taskflow.api.task.Task;
+import com.taskflow.api.domain.task.Priority;
+import com.taskflow.api.domain.task.Quadrant;
+import com.taskflow.api.domain.task.Task;
 import java.time.Duration;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;

@@ -10,7 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.taskflow.api.IntegrationTest;
-import com.taskflow.api.user.UserRepository;
+import com.taskflow.api.infrastructure.jpa.UserRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
