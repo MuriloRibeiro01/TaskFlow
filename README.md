@@ -1,218 +1,79 @@
 # TaskFlow
 
-> Aplicativo móvel de produtividade que une gerenciamento de tarefas e técnica Pomodoro — *Foco com propósito*.
+> Aplicativo móvel de produtividade que une gerenciamento de tarefas, técnica Pomodoro e priorização pela matriz de Eisenhower — *Foco com propósito*.
 
----
+## Como executar (resumo)
 
-## Visão geral
-
-| Parte | Tecnologia | Pasta |
-|---|---|---|
-| App mobile | Expo SDK 54, React Native 0.81, TypeScript, Expo Router, expo-sqlite (offline-first) | `taskflow-app/` |
-| Backend | Spring Boot 3, PostgreSQL 15, Flyway, JWT | `taskflow-api-spring/` |
-| Priorização ML | Python, scikit-learn (TF-IDF + regressão logística) | `taskflow-ml/` |
-| Infraestrutura | Docker + Docker Compose | `compose.yml` |
-
-Autenticação via OAuth Google: o app obtém o ID token do Google, a API valida e emite um JWT próprio.
-
-## Documentação
-
-| Documento | Arquivo |
-|---|---|
-| Documento de Visão v2.1 | `Documents/TaskFlow_DocumentoDeVisao.docx` |
-| Documento de Requisitos v2.1 | `Documents/TaskFlow_DocumentoDeRequisitos.docx` |
-| Documento de Arquitetura v2.1 | `Documents/TaskFlow_DocumentoDeArquitetura.docx` |
-| Design System v1.0 | `Documents/TaskFlow_DesignSystem_v1.0.pdf` |
-| Protótipos de alta fidelidade | `Prototipos-Alta/` |
-| Versões anteriores (v1.0) | `Documents/v1.0/` |
-
----
-
-## Rodar rápido: doctor e demo
-
-Com os dois `.env` preenchidos (veja [Configuração do ambiente](#configuração-do-ambiente)), tudo roda da raiz do projeto:
-
-| Comando | O que faz |
-|---|---|
-| `npm run doctor` | Confere ferramentas, `.env`, IP da máquina, Docker, banco, API, aparelho e APK, e diz como corrigir cada problema |
-| `npm run doctor -- --fix` | Corrige sozinho o que é seguro: abre o Docker e o emulador, sobe os containers (e recria a API se travar), reconstrói a imagem desatualizada, atualiza `EXPO_PUBLIC_API_URL` quando o IP muda e desinstala o app antigo `com.taskflow.app` |
-| `npm run apk` | Gera o **APK de apresentação** (release, com o JavaScript dentro, sem Metro) em `dist/` e instala no aparelho |
-| `npm run demo` | Roteiro do dia: doctor `--fix`, sobe banco e API, instala o APK (ou gera de novo, se o IP ou o ID do Google mudaram) e abre o app |
-| `npm run demo:dev` | Plano B: build de desenvolvimento + Metro, com o JavaScript compilado antes de abrir o app |
-| `npm run test:doctor` | Testes do doctor |
-
-### Dia da apresentação
-
-**Na véspera**, na rede onde vai apresentar (ou com o hotspot do celular que será usado):
-
-1. `npm run doctor -- --fix`: tudo verde, ou só avisos.
-2. `npm run apk`: gera e instala o APK. O IP da API vai **dentro** do APK.
-3. Abra o app, entre com Google, crie uma tarefa e confira se ela sincroniza.
-
-**No dia:**
-
-1. Conecte na **mesma rede** da véspera. Se o IP mudar, o `demo` gera o APK de novo (10 a 20 min).
-2. `npm run demo`.
-3. Se algo falhar no APK: `npm run demo:dev`.
-
-**Checklist do login com Google:**
-
-- A conta que vai entrar está em **usuários de teste** na tela de consentimento OAuth do Google Cloud.
-- O APK é assinado com a chave de debug padrão, cujo SHA-1 (`5E:8F:16:...:F6:25`) já está no Client ID Android `br.edu.ucb.taskflow`. Não precisa de outro cadastro.
-- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (app) e `GOOGLE_CLIENT_IDS` (raiz) têm o mesmo ID, do cliente **Aplicativo da Web**. O doctor confere.
-
-**Celular físico** em vez de emulador: depuração USB ativa, mesma rede Wi-Fi da máquina e porta 3000 liberada no Firewall do Windows (`netsh advfirewall firewall add rule name="TaskFlow API" dir=in action=allow protocol=TCP localport=3000`, como administrador).
-
----
-
-## Configuração do ambiente
-
-### Pré-requisitos
-
-- Node.js 20 LTS
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (inclui Docker Compose)
-- Xcode (iOS) ou Android Studio (Android)
-- Python 3.11+ (apenas para treinar o modelo de priorização)
-
----
-
-### 1. Variáveis de ambiente
+**Pré-requisitos:** Docker Desktop (com Docker Compose), Node.js 22 LTS (ou 20.19+) e, para o app, **Android Studio com um emulador** ou **Xcode com um simulador** (só macOS).
 
 ```bash
-cp .env.example .env
-```
+# 1. Variáveis da API (na raiz)
+cp .env.example .env            # preencha POSTGRES_* e JWT_SECRET (veja api/README.md)
 
-Gere o `JWT_SECRET` e preencha no `.env`:
-
-```bash
-openssl rand -hex 32
-```
-
-Para testes locais sem Google, habilite o login de desenvolvimento:
-
-```
-ENABLE_DEV_LOGIN=true
-```
-
-Para ativar a priorização com IA da Anthropic (opcional — sem a chave a API usa o modelo treinado localmente ou regras por prazo e prioridade):
-
-```
-ANTHROPIC_API_KEY=sk-ant-...
-```
-
-O arquivo `.env` nunca deve ser versionado.
-
----
-
-### 2. Backend (API + banco)
-
-**Primeira vez** (compila o JAR e sobe tudo):
-
-```bash
+# 2. Banco + API em http://localhost:3000
 docker compose up --build
-```
 
-**Nas próximas vezes** (já compilado):
-
-```bash
-docker compose up
-```
-
-A API sobe em `http://localhost:3000`. O Flyway aplica as migrations automaticamente.
-
-> Se o Docker não for encontrado após instalar o Docker Desktop, reabra o terminal. Se persistir: `echo 'export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc`
-
----
-
-### 3. Modelo de priorização (ML)
-
-O modelo TF-IDF + regressão logística é treinado a partir de `taskflow-ml/tarefas_treino.xlsx` e exportado como JSON para o classpath do Spring Boot.
-
-```bash
-cd taskflow-ml
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python treinar.py
-```
-
-O relatório de acurácia é salvo em `taskflow-ml/relatorio.txt`.
-
-Após treinar, reconstrua o backend para incluir o novo modelo no JAR:
-
-```bash
-docker compose build --no-cache && docker compose up
-```
-
----
-
-### 4. App mobile
-
-**Instalar dependências:**
-
-```bash
-cd taskflow-app
+# 3. App (em outro terminal)
+cd app
 npm install
 ```
 
-**Variáveis de ambiente do app** (`taskflow-app/.env`):
+Depois escolha a plataforma:
 
-| Variável | Valor |
-|---|---|
-| `EXPO_PUBLIC_API_URL` | `http://<IP-DA-MÁQUINA>:3000` (dispositivo físico) ou `http://localhost:3000` (simulador iOS) |
-| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | Client ID Web do Google Cloud Console |
-| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | Client ID iOS do Google Cloud Console (bundle ID: `br.edu.ucb.taskflow`) |
+| | Android (emulador) | iOS (simulador, só macOS) |
+|---|---|---|
+| `app/.env` | `EXPO_PUBLIC_API_URL=http://10.0.2.2:3000` | `EXPO_PUBLIC_API_URL=http://localhost:3000` |
+| Primeira vez | `npx expo run:android` | `npx expo run:ios` |
+| Próximas vezes | `npx expo start` e tecle `a` | `npx expo start` e tecle `i` |
 
-> No emulador Android use `http://10.0.2.2:3000`. Para descobrir o IP da máquina: `ipconfig getifaddr en0`
+Num celular físico (Android ou iPhone), use `http://<IP-da-máquina>:3000`, com o celular na mesma rede Wi-Fi. Detalhes em [app/README.md](app/README.md).
 
-**Primeira build nativa** (necessária para módulos nativos como Google Sign-In):
+Cada parte tem o próprio README com pré-requisitos, dependências, variáveis e comandos:
 
-```bash
-# Simulador iOS
-npx expo run:ios
+| Pasta | Conteúdo | README |
+|---|---|---|
+| `api/` | API REST (Spring Boot 4, Java 17, PostgreSQL 15, Flyway, JWT) | [api/README.md](api/README.md) |
+| `app/` | App mobile (Expo, React Native, TypeScript, SQLite offline-first) | [app/README.md](app/README.md) |
+| `ml/` | Treino do modelo de priorização (Python, scikit-learn) | [ml/README.md](ml/README.md) |
+| `docs/` | Integrantes, vídeo, BMC, modelo de dados e demais documentos | [docs/README.md](docs/README.md) |
+| `scripts/` | Atalhos de diagnóstico e demonstração (`doctor`, `demo`, `apk`) | [scripts/README.md](scripts/README.md) |
 
-# Dispositivo físico iOS (conectado via USB com Modo Desenvolvedor ativo)
-npx expo run:ios --device
+## Estrutura
 
-# Emulador Android
-npx expo run:android
+```
+TaskFlow/
+├── docs/          documentação (integrantes, vídeo, BMC, DADOS, diagramas, protótipos)
+├── api/           API Spring Boot: única API, consumida pelo app
+├── app/           app mobile (Android e iOS)
+├── ml/            treino do modelo de prioridade (gera um JSON usado pela API)
+├── scripts/       doctor, demo e apk
+├── compose.yml    PostgreSQL + API
+└── .env.example   variáveis da API (copie para .env)
 ```
 
-**Nas próximas vezes** (apenas mudanças em JS/TS):
+## Como as partes se ligam
 
-```bash
-npx expo start
+```
+app (SQLite local) ──HTTP + JWT──> api (Spring Boot) ──JPA/Flyway──> PostgreSQL
+                                     │
+                                     └─ priorização: Claude (opcional) → modelo do ml/ → regras por prazo
 ```
 
-> Só rode `npx expo prebuild --clean` quando `app.json` ou dependências nativas mudarem — isso descarta o cache do Xcode e a build demora muito mais.
-
----
-
-### 5. Testes
-
-```bash
-cd taskflow-app
-npx jest
-```
-
----
+- O app funciona offline: grava no SQLite e sincroniza com a API quando há conexão e sessão.
+- O login é por e-mail e senha (`/auth/register` e `/auth/login`); a API devolve um JWT válido por 7 dias.
+- A priorização usa a API da Anthropic se `ANTHROPIC_API_KEY` estiver definida; sem ela, usa o modelo treinado em `ml/` (embutido no JAR) e, por fim, regras por prazo e prioridade.
 
 ## Fluxo de trabalho com Git
 
-A branch de integração é a `develop`. A `main` recebe apenas versões estáveis.
+A branch de integração é a `develop`; a `main` recebe só versões estáveis. Crie uma branch por funcionalidade a partir da `develop` e abra o Pull Request para ela.
+
+## Entrega (.zip)
+
+Não inclua `node_modules/` (penalidade de –3 pontos), `.env`, `app/android/`, `app/ios/` nem `api/target/`. Da pasta acima do projeto:
 
 ```bash
-# Sincronize antes de começar
-git checkout develop
-git pull origin develop
-
-# Crie uma branch por funcionalidade a partir da develop
-git checkout -b feature/nome-da-funcionalidade
+zip -r TaskFlow.zip TaskFlow -x "*/node_modules/*" "*/.git/*" "*/.env" "*/target/*" "*/android/*" "*/ios/*" "*/.expo/*" "*/.venv/*" "*/.maestri/*" "*.DS_Store"
 ```
-
-Ao concluir, abra um Pull Request da sua branch para a `develop`.
-
----
 
 ## Créditos
 

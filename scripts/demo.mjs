@@ -65,7 +65,7 @@ async function demoDev(ctx) {
 
     let metro = null;
     if (await metroUp()) {
-        console.log('\n✔ Metro já está rodando (se mudou o taskflow-app/.env, pare-o e rode de novo)');
+        console.log('\n✔ Metro já está rodando (se mudou o app/.env, pare-o e rode de novo)');
     } else {
         console.log('\n… iniciando o Metro com cache limpo');
         metro = spawn('npx expo start --dev-client --clear', { cwd: APP, stdio: 'inherit', shell: true });

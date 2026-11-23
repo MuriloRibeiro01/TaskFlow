@@ -37,7 +37,7 @@ export async function buildApk({ install = true } = {}) {
     const apiUrl = ctx.appEnv?.get('EXPO_PUBLIC_API_URL');
     const webClientId = ctx.appEnv?.get('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID');
     if (!apiUrl || !webClientId) {
-        console.error('✖ taskflow-app/.env sem EXPO_PUBLIC_API_URL ou EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID. Rode npm run doctor.');
+        console.error('✖ app/.env sem EXPO_PUBLIC_API_URL ou EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID. Rode npm run doctor.');
         return false;
     }
     console.log(`   API: ${apiUrl}\n   Google (Web): ${webClientId.slice(0, 20)}…`);
@@ -82,7 +82,7 @@ export async function buildApk({ install = true } = {}) {
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     if (!existsSync(join(APP, 'node_modules'))) {
-        console.error('✖ Rode npm install em taskflow-app antes.');
+        console.error('✖ Rode npm install em app antes.');
         process.exit(1);
     }
     process.exit((await buildApk({ install: !process.argv.includes('--no-install') })) ? 0 : 1);

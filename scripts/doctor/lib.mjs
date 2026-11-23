@@ -59,7 +59,7 @@ export function checkAppEnv(app, root) {
     const apiUrl = app.get('EXPO_PUBLIC_API_URL');
 
     if (!webId) {
-        issues.push(error('taskflow-app/.env: falta EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID', 'use o ID do cliente "Aplicativo da Web" do Google Cloud'));
+        issues.push(error('app/.env: falta EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID', 'use o ID do cliente "Aplicativo da Web" do Google Cloud'));
     } else {
         const accepted = (root.get('GOOGLE_CLIENT_IDS') ?? '').split(',').map((s) => s.trim());
         if (!accepted.includes(webId)) {
@@ -71,12 +71,12 @@ export function checkAppEnv(app, root) {
     }
 
     if (!apiUrl) {
-        issues.push(error('taskflow-app/.env: falta EXPO_PUBLIC_API_URL', 'use http://<IP da máquina>:3000'));
+        issues.push(error('app/.env: falta EXPO_PUBLIC_API_URL', 'use http://<IP da máquina>:3000'));
     } else if (/localhost|127\.0\.0\.1/.test(apiUrl)) {
         issues.push(warn('EXPO_PUBLIC_API_URL usa localhost: só funciona no simulador iOS (no Android é o próprio aparelho)', 'use o IP da máquina na rede'));
     }
 
-    if (issues.length === 0) issues.push(ok('taskflow-app/.env completo e com o mesmo ID Google da API'));
+    if (issues.length === 0) issues.push(ok('app/.env completo e com o mesmo ID Google da API'));
     return issues;
 }
 
