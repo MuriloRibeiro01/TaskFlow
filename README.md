@@ -28,6 +28,8 @@ Depois escolha a plataforma:
 
 Num celular físico (Android ou iPhone), use `http://<IP-da-máquina>:3000`, com o celular na mesma rede Wi-Fi. Detalhes em [app/README.md](app/README.md).
 
+**Modelo de priorização:** já vem treinado (`api/src/main/resources/modelo-prioridade.json`) e entra na API no `docker compose up --build`, então não é preciso treinar nada para rodar o projeto. Para treinar de novo, veja [ml/README.md](ml/README.md).
+
 Cada parte tem o próprio README com pré-requisitos, dependências, variáveis e comandos:
 
 | Pasta | Conteúdo | README |
