@@ -23,8 +23,7 @@ Depois escolha a plataforma:
 | | Android (emulador) | iOS (simulador, só macOS) |
 |---|---|---|
 | `app/.env` | `EXPO_PUBLIC_API_URL=http://10.0.2.2:3000` | `EXPO_PUBLIC_API_URL=http://localhost:3000` |
-| Primeira vez | `npx expo run:android` | `npx expo run:ios` |
-| Próximas vezes | `npx expo start` e tecle `a` | `npx expo start` e tecle `i` |
+| Executar | `npx expo start` e tecle `a` | `npx expo start` e tecle `i` |
 
 Num celular físico (Android ou iPhone), use `http://<IP-da-máquina>:3000`, com o celular na mesma rede Wi-Fi. Detalhes em [app/README.md](app/README.md).
 

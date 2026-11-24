@@ -23,7 +23,7 @@ const colors = {
 };
 
 export default function LoginScreen() {
-  const { signIn, register, signInAsGuest, isLoading } = useAuth();
+  const { signIn, register, isLoading } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -131,15 +131,6 @@ export default function LoginScreen() {
               <Text style={styles.toggleText}>
                 {mode === 'login' ? 'Criar conta' : 'Já tenho conta'}
               </Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Entrar sem login"
-              style={({ pressed }) => [pressed && styles.buttonPressed]}
-              onPress={signInAsGuest}
-            >
-              <Text style={styles.guestText}>Entrar sem login</Text>
             </Pressable>
           </View>
         </View>
@@ -253,15 +244,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 14,
     marginTop: 16,
-    textAlign: 'center',
-    textDecorationLine: 'underline',
-  },
-  guestText: {
-    color: colors.grey,
-    fontFamily: 'IBMPlexMono_400Regular',
-    fontSize: 11,
-    lineHeight: 14,
-    marginTop: 10,
     textAlign: 'center',
     textDecorationLine: 'underline',
   },

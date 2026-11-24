@@ -43,9 +43,8 @@ echo "EXPO_PUBLIC_API_URL=http://10.0.2.2:3000" > .env
 
 | | Android | iOS (só macOS) |
 |---|---|---|
-| Primeira vez (compila o app nativo e abre) | `npx expo run:android` | `npx expo run:ios` |
-| Celular físico conectado por USB | `npx expo run:android --device` | `npx expo run:ios --device` |
-| Próximas vezes (só mudou código JS/TS) | `npx expo start` e tecle `a` | `npx expo start` e tecle `i` |
+| Abrir o app | `npx expo start` e tecle `a` | `npx expo start` e tecle `i` |
+| Celular físico | `npx expo start` e leia o QR code com o Expo Go | idem |
 
 Depois de mudar o `.env`, reinicie com `npx expo start --clear`.
 
@@ -61,7 +60,7 @@ O SQLite é simulado em `__mocks__/expo-sqlite.ts`, então os testes não precis
 
 | Tela | Arquivo | O que faz |
 |---|---|---|
-| Login | `app/login.tsx` | Entrar ou criar conta com e-mail e senha. "Entrar sem login" usa uma conta de demonstração e exige `ENABLE_DEV_LOGIN=true` na API |
+| Login | `app/login.tsx` | Entrar ou criar conta com e-mail e senha |
 | Tarefas | `app/(tabs)/index.tsx` | Tarefas de hoje e de amanhã, com filtros; arrastar para concluir ou excluir; atalho para priorizar |
 | Nova tarefa | `app/nova-tarefa.tsx` | Nome, descrição, data e hora, nível de prioridade e tempo estimado em pomodoros |
 | Priorizar | `app/priorizar.tsx` | Matriz de Eisenhower sugerida pela API; aplicar ou desfazer as prioridades |

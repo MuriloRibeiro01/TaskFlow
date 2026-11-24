@@ -29,18 +29,17 @@ function summary(ctx, mode) {
     console.log(`   Modo:  ${mode}`);
     console.log(`   API:   ${ctx.apiUrl}`);
     if (ctx.counts) console.log(`   Banco: ${ctx.counts}`);
-    console.log('   Login: Google. A conta precisa estar em "usuários de teste" na tela de consentimento OAuth.');
+    console.log('   Login: e-mail e senha (crie a conta na tela de login).');
     console.log('   Celular físico sem acesso à API? Mesma rede Wi-Fi e porta 3000 liberada no Firewall do Windows.');
 }
 
 async function demoApk(ctx) {
     const meta = existsSync(APK_META) ? JSON.parse(readFileSync(APK_META, 'utf8')) : null;
     const stale = !meta || !existsSync(APK_FILE)
-        || meta.apiUrl !== ctx.apiUrl
-        || meta.webClientId !== ctx.appEnv.get('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID');
+        || meta.apiUrl !== ctx.apiUrl;
 
     if (stale) {
-        console.log(`\n⚠ ${meta ? 'O APK foi gerado com outro endereço da API ou outro ID do Google' : 'O APK de apresentação ainda não existe'}: gerando agora.`);
+        console.log(`\n⚠ ${meta ? 'O APK foi gerado com outro endereço da API' : 'O APK de apresentação ainda não existe'}: gerando agora.`);
         if (!(await buildApk({ install: true }))) return false;
     } else {
         const at = installedAt(ctx.adb, ctx.device);
@@ -68,7 +67,7 @@ async function demoDev(ctx) {
         console.log('\n✔ Metro já está rodando (se mudou o app/.env, pare-o e rode de novo)');
     } else {
         console.log('\n… iniciando o Metro com cache limpo');
-        metro = spawn('npx expo start --dev-client --clear', { cwd: APP, stdio: 'inherit', shell: true });
+        metro = spawn('npx expo start --clear', { cwd: APP, stdio: 'inherit', shell: true });
         if (!(await waitFor(metroUp, { timeoutMs: 120_000 }))) {
             console.error('✖ O Metro não subiu em 2 min');
             return false;

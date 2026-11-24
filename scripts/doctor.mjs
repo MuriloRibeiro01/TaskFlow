@@ -127,9 +127,9 @@ function checkEnvFiles(ctx, fix) {
     ctx.rootEnv = readEnv(rootFile);
     ctx.appEnv = readEnv(appFile);
     if (!ctx.rootEnv) return [error('.env da raiz não existe', 'copie .env.example para .env e preencha')];
-    if (!ctx.appEnv) return [error('app/.env não existe', 'crie com EXPO_PUBLIC_API_URL e EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID')];
+    if (!ctx.appEnv) return [error('app/.env não existe', 'crie com EXPO_PUBLIC_API_URL')];
 
-    const issues = [...checkRootEnv(ctx.rootEnv), ...checkAppEnv(ctx.appEnv, ctx.rootEnv)];
+    const issues = [...checkRootEnv(ctx.rootEnv), ...checkAppEnv(ctx.appEnv)];
 
     // IP: o Wi-Fi do dia pode dar outro IP, e o app (e o APK) ficariam apontando para o lugar errado.
     ctx.ip = currentIp();
@@ -212,9 +212,6 @@ async function checkApi(ctx) {
         ? ok(`API respondendo em ${ctx.apiUrl}`)
         : error(`API não responde em ${ctx.apiUrl}`, 'veja: docker compose logs api'));
 
-    const google = await httpStatus(`${ctx.apiUrl}/auth/google`);
-    if (google === 503) issues.push(error('POST /auth/google responde 503: a API não tem GOOGLE_CLIENT_IDS', 'preencha no .env da raiz e rode docker compose up -d api'));
-
     const version = psql(ctx.rootEnv, 'select max(version)::int from flyway_schema_history');
     const expected = latestMigration();
     if (version == null) issues.push(warn('Não consegui ler a versão do banco'));
@@ -282,8 +279,6 @@ function checkPresentationApk(ctx) {
     ctx.apkMeta = meta;
     if (ctx.apiUrl && meta.apiUrl !== ctx.apiUrl) {
         issues.push(error(`APK aponta para ${meta.apiUrl}, mas a API agora está em ${ctx.apiUrl}`, 'npm run apk (o endereço vai dentro do APK)'));
-    } else if (ctx.appEnv && meta.webClientId !== ctx.appEnv.get('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID')) {
-        issues.push(error('APK gerado com outro ID do Google', 'npm run apk'));
     } else {
         const commit = sh('git rev-parse --short HEAD').out.trim();
         issues.push(meta.commit === commit
@@ -300,7 +295,7 @@ function checkMetro(ctx) {
     if (!started) return [];
     const envChanged = statSync(join(APP, '.env')).mtime;
     if (ctx.envChanged || envChanged > new Date(started)) {
-        return [warn('O Metro foi iniciado antes da última mudança no app/.env (está servindo os valores antigos)', 'pare o Metro e rode: npx expo start --dev-client --clear')];
+        return [warn('O Metro foi iniciado antes da última mudança no app/.env (está servindo os valores antigos)', 'pare o Metro e rode: npx expo start --clear')];
     }
     return [ok('Metro rodando com o .env atual')];
 }

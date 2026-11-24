@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Gera o APK de apresentação: build de release com o JavaScript dentro (não precisa de Metro),
-// assinado com a chave de debug, cujo SHA-1 já está cadastrado no Google (o login funciona).
-// O endereço da API e o ID do Google entram no APK: mudou o IP ou o ID, gere de novo.
+// assinado com a chave de debug.
+// O endereço da API entra no APK: mudou o IP, gere de novo.
 //   npm run apk                  gera e instala no aparelho conectado
 //   npm run apk -- --no-install  só gera
 import { spawn } from 'node:child_process';
@@ -35,12 +35,11 @@ export async function buildApk({ install = true } = {}) {
     console.log('\x1b[1mAPK de apresentação\x1b[0m: conferindo o ambiente antes (corrige o IP no .env, se mudou)');
     const { ctx } = await doctor({ fix: true, quiet: true });
     const apiUrl = ctx.appEnv?.get('EXPO_PUBLIC_API_URL');
-    const webClientId = ctx.appEnv?.get('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID');
-    if (!apiUrl || !webClientId) {
-        console.error('✖ app/.env sem EXPO_PUBLIC_API_URL ou EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID. Rode npm run doctor.');
+    if (!apiUrl) {
+        console.error('✖ app/.env sem EXPO_PUBLIC_API_URL. Rode npm run doctor.');
         return false;
     }
-    console.log(`   API: ${apiUrl}\n   Google (Web): ${webClientId.slice(0, 20)}…`);
+    console.log(`   API: ${apiUrl}`);
 
     // Daemon do Gradle de um build anterior trava arquivos em android/ e o prebuild não consegue recriar a pasta.
     const gradlewExisting = join(APP, 'android', platform() === 'win32' ? 'gradlew.bat' : 'gradlew');
@@ -60,7 +59,6 @@ export async function buildApk({ install = true } = {}) {
     copyFileSync(join(APP, 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk'), APK_FILE);
     const meta = {
         apiUrl,
-        webClientId,
         commit: sh('git rev-parse --short HEAD').out.trim(),
         builtAt: new Date().toISOString(),
         package: PACKAGE,

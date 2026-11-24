@@ -13,7 +13,6 @@ interface AuthContextData {
     isLoading: boolean;
     signIn: (email: string, password: string) => Promise<void>;
     register: (email: string, password: string) => Promise<void>;
-    signInAsGuest: () => Promise<void>;
     signOut: () => Promise<void>;
 }
 
@@ -75,18 +74,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(user);
     };
 
-    const signInAsGuest = async () => {
-        const user = await loginDev('guest@demo.com');
-        setUser(user);
-    };
-
     const signOut = async () => {
         await logout();
         setUser(null);
     };
 
     return (
-        <AuthContext.Provider value={{ user, isLoading: loading, signIn, register, signInAsGuest, signOut }}>
+        <AuthContext.Provider value={{ user, isLoading: loading, signIn, register, signOut }}>
             {children}
         </AuthContext.Provider>
     );

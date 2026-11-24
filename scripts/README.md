@@ -17,8 +17,6 @@ Rode da raiz do projeto:
 | `npm run demo:dev` | Plano B: build de desenvolvimento + Metro |
 | `npm run test:doctor` | Testes do doctor |
 
-> **Atenção:** `doctor`, `apk` e `demo` ainda conferem `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`, do login Google que foi substituído pelo login por e-mail. Sem essa variável no `app/.env`, o `doctor` acusa erro e o `apk` não gera o APK.
-
 **Celular físico:** depuração USB ativa, mesma rede Wi-Fi da máquina e porta 3000 liberada no firewall. O endereço da API vai dentro do APK: se o IP da máquina mudar, gere o APK de novo.
 
 ## Arquivos
