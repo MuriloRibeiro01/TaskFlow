@@ -10,6 +10,7 @@ import { useNetInfo } from '@react-native-community/netinfo';
 import { useTheme } from '@/hooks/useTheme';
 import { getSettings, saveSettings, Settings } from '@/database/settings';
 import { exportReport } from '@/services/reportService';
+import { dayKey, localDay } from '@/utils/date';
 
 function getInitials(name?: string | null): string {
   if (!name) return 'U';
@@ -60,9 +61,9 @@ export function useProfileViewModel() {
     await signOut();
   };
 
-  const today = new Date().toISOString().substring(0, 10);
+  const today = dayKey(new Date());
   const todayDone = tasks.filter(
-    (t) => t.status === 'done' && t.completed_at?.substring(0, 10) === today
+    (t) => t.status === 'done' && localDay(t.completed_at) === today
   );
   const pomToday = todayDone.reduce((acc, t) => acc + (t.completed_pomodoros ?? 0), 0);
   const doneToday = todayDone.length;

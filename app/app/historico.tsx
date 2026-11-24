@@ -7,6 +7,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { useAuth } from '@/database/context/auth_context';
 import { getAllTasks } from '@/database/tasks';
 import { Task } from '@/types/task.types';
+import { localDay, localTime } from '@/utils/date';
 
 const MONTHS_PT = [
   'JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN',
@@ -27,9 +28,7 @@ function formatDateHeader(dateKey: string): string {
 }
 
 function extractCompletionTime(completedAt: string | null): string {
-  if (!completedAt) return '';
-  const match = completedAt.match(/(\d{2}):(\d{2})/);
-  return match ? `${match[1]}:${match[2]}` : '';
+  return localTime(completedAt);
 }
 
 function PriorityBadge({ priority }: { priority: string }) {
@@ -76,8 +75,7 @@ export default function Historico() {
 
   const groupsMap = new Map<string, Task[]>();
   for (const task of doneTasks) {
-    const rawDate = task.completed_at || task.created_at || '';
-    const dateKey = rawDate.length >= 10 ? rawDate.substring(0, 10) : 'OUTROS';
+    const dateKey = localDay(task.completed_at || task.created_at) || 'OUTROS';
     if (!groupsMap.has(dateKey)) {
       groupsMap.set(dateKey, []);
     }
@@ -171,7 +169,7 @@ function createStyles(colors: ColorTheme) {
       backgroundColor: colors.papel,
     },
     header: {
-      backgroundColor: colors.tinta,
+      backgroundColor: colors.fundoEscuro,
       paddingTop: Spacing.sp12,
       paddingHorizontal: Spacing.sp5,
       paddingBottom: Spacing.sp5,

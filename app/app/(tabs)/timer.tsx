@@ -192,12 +192,12 @@ export default function Timer() {
 
         {!hasStarted ? (
           <>
-            <Text style={styles.sectionTitle}>SELECIONAR TAREFAS</Text>
+            <Text style={styles.sectionTitle}>SELECIONAR TAREFA</Text>
             {todayTasks.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>NENHUMA TAREFA PARA HOJE</Text>
+                <Text style={styles.emptyTitle}>NENHUMA TAREFA PENDENTE</Text>
                 <Text style={styles.emptyDescription}>
-                  ADICIONE UMA TAREFA COM DATA DE HOJE PARA INICIAR.
+                  ADICIONE UMA TAREFA PARA INICIAR.
                 </Text>
               </View>
             ) : (
@@ -224,7 +224,7 @@ export default function Timer() {
         ) : (
           <>
             <View style={styles.selectedTasksHeading}>
-              <Text style={styles.sectionTitle}>TAREFAS SELECIONADAS</Text>
+              <Text style={styles.sectionTitle}>TAREFA SELECIONADA</Text>
               <Text style={styles.sessionSummary}>
                 {formatSessionDuration(totalPomodoros, setupFocusSeconds)}
               </Text>
@@ -239,7 +239,7 @@ export default function Timer() {
             ))}
             {completedSelectedTasks.length > 0 && (
               <>
-                <Text style={styles.completedSectionTitle}>TAREFAS CONCLUÍDAS</Text>
+                <Text style={styles.completedSectionTitle}>TAREFA CONCLUÍDA</Text>
                 {completedSelectedTasks.map((task) => (
                   <TaskSelectionCard key={task.id} task={task} selected completed />
                 ))}
@@ -255,7 +255,7 @@ export default function Timer() {
 function createStyles(colors: ColorTheme) {
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.papel },
-    header: { minHeight: 128, paddingTop: 60, paddingHorizontal: Spacing.sp5, paddingBottom: Spacing.sp5, backgroundColor: colors.tinta, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+    header: { minHeight: 128, paddingTop: 60, paddingHorizontal: Spacing.sp5, paddingBottom: Spacing.sp5, backgroundColor: colors.fundoEscuro, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
     headerTitle: { fontFamily: Fonts.barlowBold, fontSize: FontSize.headingLg, color: colors.textoClaro, letterSpacing: 0.5 },
     headerStatus: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.cinza, letterSpacing: 1.8 },
     headerStatusActive: { color: colors.vermelho },
@@ -278,7 +278,7 @@ function createStyles(colors: ColorTheme) {
     durationValue: { fontFamily: Fonts.mono, fontSize: FontSize.headingMd, color: colors.tinta, letterSpacing: 1 },
     intervalLabel: { marginTop: Spacing.sp3, textAlign: 'center', fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.cinza, letterSpacing: 0.7 },
     timerControls: { marginTop: Spacing.sp6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sp1 },
-    primaryControl: { minWidth: 104, minHeight: 54, backgroundColor: colors.tinta, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.sp3 },
+    primaryControl: { minWidth: 104, minHeight: 54, backgroundColor: colors.fundoEscuro, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.sp3 },
     primaryControlText: { fontFamily: Fonts.barlowSemiBold, fontSize: FontSize.headingMd, color: colors.textoClaro },
     incrementControl: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 54 },
     incrementControlText: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.vermelho, letterSpacing: 0.6 },
@@ -295,7 +295,7 @@ function createStyles(colors: ColorTheme) {
     taskCardActive: { borderWidth: 1, borderColor: colors.papel3, borderLeftWidth: 3, borderLeftColor: colors.vermelho, backgroundColor: colors.papel },
     taskCardCompleted: { opacity: 0.55, borderLeftColor: colors.tinta },
     checkbox: { width: 24, height: 24, marginTop: 2, borderWidth: 1, borderColor: colors.tinta, alignItems: 'center', justifyContent: 'center' },
-    checkboxSelected: { backgroundColor: colors.tinta },
+    checkboxSelected: { backgroundColor: colors.fundoEscuro },
     checkboxMark: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.textoClaro },
     taskContent: { flex: 1 },
     taskTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -304,8 +304,8 @@ function createStyles(colors: ColorTheme) {
     priorityText: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, letterSpacing: 0.2 },
     taskTitle: { marginTop: Spacing.sp2, fontFamily: Fonts.barlowSemiBold, fontSize: FontSize.taskTitle, color: colors.tinta },
     taskBottomRow: { marginTop: Spacing.sp3, flexDirection: 'row', alignItems: 'center', gap: Spacing.sp2 },
-    focusBadge: { paddingVertical: 2, paddingHorizontal: Spacing.sp2, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.textoClaro, backgroundColor: colors.tinta, letterSpacing: 0.2 },
-    completedBadge: { paddingVertical: 2, paddingHorizontal: Spacing.sp2, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.textoClaro, backgroundColor: colors.tinta, letterSpacing: 0.2 },
+    focusBadge: { paddingVertical: 2, paddingHorizontal: Spacing.sp2, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.textoClaro, backgroundColor: colors.fundoEscuro, letterSpacing: 0.2 },
+    completedBadge: { paddingVertical: 2, paddingHorizontal: Spacing.sp2, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.textoClaro, backgroundColor: colors.fundoEscuro, letterSpacing: 0.2 },
     taskMeta: { fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.cinza },
     sessionSummary: { marginTop: Spacing.sp3, fontFamily: Fonts.mono, fontSize: FontSize.taskId, color: colors.cinza, letterSpacing: 0.3 },
     startButton: { minHeight: 56, marginTop: Spacing.sp4, backgroundColor: colors.vermelho, alignItems: 'center', justifyContent: 'center' },

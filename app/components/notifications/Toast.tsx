@@ -109,7 +109,7 @@ function createStyles(colors: ColorTheme) {
     toastSuccess: {
       borderLeftWidth: 3,
       borderLeftColor: colors.vermelho,
-      backgroundColor: colors.tinta,
+      backgroundColor: colors.fundoEscuro,
     },
     toastError: {
       borderLeftWidth: 3,
@@ -119,7 +119,7 @@ function createStyles(colors: ColorTheme) {
     toastInfo: {
       borderLeftWidth: 3,
       borderLeftColor: colors.cinza,
-      backgroundColor: colors.tinta,
+      backgroundColor: colors.fundoEscuro,
     },
     toastContent: {
       flexDirection: 'row',

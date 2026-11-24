@@ -24,14 +24,6 @@ export type TimerTask = {
   completedPomodoros: number;
 };
 
-function dateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function isTaskForToday(task: DBTask) {
-  return (task.due_date ?? task.created_at)?.substring(0, 10) === dateKey(new Date());
-}
-
 function toTimerTask(task: DBTask): TimerTask {
   const priorities: Record<string, Priority> = { high: 'Alta', medium: 'Média', low: 'Baixa' };
   return {
@@ -134,7 +126,6 @@ export function useTimerViewModel() {
   useFocusEffect(
     useCallback(() => {
       const tasks = getAllTasks(user?.id ?? '')
-        .filter(isTaskForToday)
         .filter((task) => task.status !== 'done')
         .map(toTimerTask);
       setTodayTasks(tasks);
@@ -257,9 +248,8 @@ export function useTimerViewModel() {
   ]);
 
   const toggleTask = (id: number) => {
-    setSelectedTaskIds((ids) =>
-      ids.includes(id) ? ids.filter((taskId) => taskId !== id) : [...ids, id]
-    );
+    // uma tarefa por sessão: tocar em outra troca a seleção
+    setSelectedTaskIds((ids) => (ids.includes(id) ? [] : [id]));
   };
 
   const startOrResumeTimer = () => {

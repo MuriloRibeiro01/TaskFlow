@@ -202,7 +202,7 @@ function StatusBadge({ status }: { status: Status }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const map: Record<Status, { label: string; color: string; bg: string }> = {
-    in_progress: { label: '● em foco', color: colors.textoClaro, bg: colors.tinta },
+    in_progress: { label: '● em foco', color: colors.textoClaro, bg: colors.fundoEscuro },
     pending: { label: '— pendente', color: colors.grafite, bg: 'rgba(14,14,15,0.06)' },
     done: { label: '✓ concluída', color: colors.tinta, bg: 'rgba(14,14,15,0.06)' },
   };
@@ -374,7 +374,7 @@ function createStyles(colors: ColorTheme) {
       paddingTop: Spacing.sp12,
       paddingBottom: Spacing.sp5,
       paddingHorizontal: Spacing.sp5,
-      backgroundColor: colors.tinta,
+      backgroundColor: colors.fundoEscuro,
     },
     headerTopRow: {
       flexDirection: 'row',
@@ -567,7 +567,7 @@ function createStyles(colors: ColorTheme) {
       backgroundColor: 'transparent',
     },
     cardCheckboxDone: {
-      backgroundColor: colors.tinta,
+      backgroundColor: colors.fundoEscuro,
       borderColor: colors.tinta,
     },
     cardCheckboxMark: {

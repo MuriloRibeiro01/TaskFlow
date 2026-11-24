@@ -7,6 +7,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { useAuth } from '@/database/context/auth_context';
 import { getAllTasks } from '@/database/tasks';
 import { Task } from '@/types/task.types';
+import { localDay } from '@/utils/date';
 const WEEKDAYS_PT = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
 
 function SimpleBarChart({
@@ -87,7 +88,7 @@ export default function Estatisticas() {
   const tasksByDay: DayStat[] = past7Days.map((day) => {
     const dayTasks = tasks.filter((t) => {
       if (t.status !== 'done') return false;
-      const compDate = t.completed_at ? t.completed_at.substring(0, 10) : '';
+      const compDate = localDay(t.completed_at);
       return compDate === day.date;
     });
 
@@ -122,7 +123,7 @@ export default function Estatisticas() {
     (t) =>
       t.status === 'done' &&
       t.completed_at &&
-      past7DateSet.has(t.completed_at.substring(0, 10))
+      past7DateSet.has(localDay(t.completed_at))
   );
   const totalPomodoros7 = tasksLast7Days.reduce(
     (acc, t) => acc + (t.completed_pomodoros ?? 0),
@@ -202,7 +203,7 @@ function createStyles(colors: ColorTheme) {
       backgroundColor: colors.papel,
     },
     header: {
-      backgroundColor: colors.tinta,
+      backgroundColor: colors.fundoEscuro,
       paddingTop: Spacing.sp12,
       paddingHorizontal: Spacing.sp5,
       paddingBottom: Spacing.sp5,

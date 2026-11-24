@@ -7,17 +7,20 @@ export const LightColors = {
   grafite: '#5A5850',
   cinza: '#9A978E',
   textoClaro: '#F5F2EB',
+  // fundo de header, tab bar e botão principal; tinta é a cor do texto
+  fundoEscuro: '#0E0E0F',
 } as const;
 
 export const DarkColors = {
-  tinta: '#111110',
+  tinta: '#F5F2EB',
   vermelho: '#D63B2F',
   papel: '#1C1C1E',
   papel2: '#2C2C2E',
   papel3: '#3A3A3C',
   grafite: '#9A978E',
-  cinza: '#636366',
+  cinza: '#8E8E93',
   textoClaro: '#F5F2EB',
+  fundoEscuro: '#111110',
 } as const;
 
 export const ThemeColors = {

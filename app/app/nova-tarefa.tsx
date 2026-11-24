@@ -147,7 +147,7 @@ export default function NovaTarefa() {
 
   return (
     <View style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.tinta} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.fundoEscuro} />
       <View style={styles.root}>
         <View style={styles.header}>
           <View>
@@ -337,11 +337,11 @@ export default function NovaTarefa() {
 
 function createStyles(colors: ColorTheme) {
   return StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: colors.tinta },
+    safeArea: { flex: 1, backgroundColor: colors.fundoEscuro },
     root: { flex: 1, backgroundColor: colors.papel },
     header: {
       alignItems: 'flex-start',
-      backgroundColor: colors.tinta,
+      backgroundColor: colors.fundoEscuro,
       flexDirection: 'row',
       justifyContent: 'space-between',
       paddingBottom: Spacing.sp5,

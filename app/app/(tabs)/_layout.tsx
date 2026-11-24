@@ -59,7 +59,7 @@ export default function TabLayout() {
 function createStyles(colors: ColorTheme) {
   return StyleSheet.create({
     tabBar: {
-      backgroundColor: colors.tinta,
+      backgroundColor: colors.fundoEscuro,
       borderTopWidth: 0,
       height: 80,
       paddingBottom: 20,

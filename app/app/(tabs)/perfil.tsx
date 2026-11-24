@@ -220,7 +220,7 @@ export default function Perfil() {
                   style={[
                     styles.themeButton,
                     colorScheme === 'light'
-                      ? { borderColor: colors.tinta, backgroundColor: colors.tinta }
+                      ? { borderColor: colors.tinta, backgroundColor: colors.fundoEscuro }
                       : { borderColor: colors.cinza, backgroundColor: 'transparent' },
                   ]}
                   onPress={() => setColorScheme('light')}
@@ -240,7 +240,7 @@ export default function Perfil() {
                   style={[
                     styles.themeButton,
                     colorScheme === 'dark'
-                      ? { borderColor: colors.tinta, backgroundColor: colors.tinta }
+                      ? { borderColor: colors.tinta, backgroundColor: colors.fundoEscuro }
                       : { borderColor: colors.cinza, backgroundColor: 'transparent' },
                   ]}
                   onPress={() => setColorScheme('dark')}
@@ -267,7 +267,7 @@ export default function Perfil() {
                 style={[
                   styles.toggleTrack,
                   soundOn
-                    ? { borderColor: colors.tinta, backgroundColor: colors.tinta, alignItems: 'flex-end' }
+                    ? { borderColor: colors.tinta, backgroundColor: colors.fundoEscuro, alignItems: 'flex-end' }
                     : { borderColor: colors.cinza, backgroundColor: 'transparent', alignItems: 'flex-start' },
                 ]}
                 onPress={() => setSoundOn((v) => !v)}
@@ -291,7 +291,7 @@ export default function Perfil() {
                 style={[
                   styles.toggleTrack,
                   vibOn
-                    ? { borderColor: colors.tinta, backgroundColor: colors.tinta, alignItems: 'flex-end' }
+                    ? { borderColor: colors.tinta, backgroundColor: colors.fundoEscuro, alignItems: 'flex-end' }
                     : { borderColor: colors.cinza, backgroundColor: 'transparent', alignItems: 'flex-start' },
                 ]}
                 onPress={() => setVibOn((v) => !v)}
@@ -341,7 +341,7 @@ function createStyles(colors: ColorTheme) {
       backgroundColor: colors.papel,
     },
     header: {
-      backgroundColor: colors.tinta,
+      backgroundColor: colors.fundoEscuro,
       paddingTop: Spacing.sp12,
       paddingHorizontal: Spacing.sp5,
       paddingBottom: Spacing.sp4,
@@ -375,13 +375,13 @@ function createStyles(colors: ColorTheme) {
       width: 48,
       height: 48,
       borderRadius: 0,
-      backgroundColor: colors.tinta,
+      backgroundColor: colors.fundoEscuro,
     },
     avatarPlaceholder: {
       width: 48,
       height: 48,
       borderRadius: 0,
-      backgroundColor: colors.tinta,
+      backgroundColor: colors.fundoEscuro,
       alignItems: 'center',
       justifyContent: 'center',
     },
