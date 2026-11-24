@@ -1,0 +1,20 @@
+digraph G {
+  rankdir=TB;
+  graph [fontname="Inter", fontsize=12, bgcolor="white", pad=0.3, nodesep=0.35, ranksep=0.45, labeljust=l];
+  node  [fontname="Inter", fontsize=11, shape=box, style="rounded,filled", fillcolor="#FFFFFF", color="#1B3A5C", penwidth=1.2, margin="0.16,0.08"];
+  edge  [fontname="Inter", fontsize=9, color="#4B5563", arrowsize=0.7, fontcolor="#4B5563"];
+  label=<<B>TaskFlow · Fluxo de navegação</B><BR/><FONT POINT-SIZE="10" COLOR="#6B7280">Expo Router. Versão 3.0, novembro de 2026.</FONT>>; labelloc=t; fontsize=16;
+  root [label="_layout.tsx\n(abre o app)", fillcolor="#1B3A5C", fontcolor="white"];
+  s [label="Sessão salva\nválida?", shape=diamond, style=filled, fillcolor="#FFF7ED", color="#B45309", fontsize=10];
+  login [label="Login\ne-mail e senha\n(Entrar / Criar conta)"];
+  subgraph cluster_tabs { label=<<B>Tabs</B>>; style="rounded,filled"; fillcolor="#F3F6FA"; color="#1B3A5C";
+    rank=same; home [label="Tarefas\n(Hoje e Amanhã)"]; timer [label="Timer"]; perfil [label="Perfil"];
+    home -> timer -> perfil [dir=both, style=dotted, label="barra de abas", fontsize=8]; }
+  form [label="Nova / Editar tarefa\nnova-tarefa.tsx (?id=)"];
+  prio [label="Priorizar com IA\npriorizar.tsx", fillcolor="#FDF2F1", color="#D63B2F"];
+  hist [label="Histórico"]; stats [label="Estatísticas"];
+  root -> s; s -> login [label="não"]; s -> home [label="sim"]; login -> home [label="login ok"];
+  home -> form [label="+ / toque na tarefa"]; home -> prio [label="Priorizar"];
+  prio -> timer [label="Fazer agora → Timer"];
+  perfil -> hist; perfil -> stats; perfil -> login [label="Sair", style=dashed];
+}

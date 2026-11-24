@@ -11,7 +11,7 @@ App de tarefas com timer Pomodoro e priorização pela matriz de Eisenhower, par
 - **iOS (só macOS):** Xcode com um simulador
 - A [API](../api/README.md) rodando (`docker compose up` na raiz)
 
-O app usa módulos nativos, então roda como *development build* (`expo run`), não no Expo Go.
+O app roda no Expo Go: não é preciso compilar nada nativo.
 
 ### Dependências
 

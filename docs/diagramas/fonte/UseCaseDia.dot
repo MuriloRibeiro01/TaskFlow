@@ -1,0 +1,26 @@
+digraph G {
+  rankdir=LR;
+  graph [fontname="Inter", fontsize=12, bgcolor="white", pad=0.3, nodesep=0.35, ranksep=0.45, labeljust=l];
+  node  [fontname="Inter", fontsize=11, shape=box, style="rounded,filled", fillcolor="#FFFFFF", color="#1B3A5C", penwidth=1.2, margin="0.16,0.08"];
+  edge  [fontname="Inter", fontsize=9, color="#4B5563", arrowsize=0.7, fontcolor="#4B5563"];
+  label=<<B>TaskFlow · Diagrama de casos de uso</B><BR/><FONT POINT-SIZE="10" COLOR="#6B7280">Versão 3.0, novembro de 2026.</FONT>>; labelloc=t; fontsize=16;
+  node [shape=ellipse, style=filled, fillcolor="#F3F6FA", color="#1B3A5C", fontsize=10, margin="0.08,0.04"];
+  user [label="Usuário", shape=none, style="", image="", fontsize=12, fillcolor=white, label=<<FONT POINT-SIZE="26">☺</FONT><BR/><B>Usuário</B>>];
+  apiA [label=<<FONT POINT-SIZE="20">⚙</FONT><BR/><B>TaskFlow API</B>>, shape=none, style=""];
+  aiA  [label=<<FONT POINT-SIZE="20">⚙</FONT><BR/><B>Serviço de IA</B><BR/><FONT POINT-SIZE="8">(opcional)</FONT>>, shape=none, style=""];
+  subgraph cluster_s { label=<<B>App TaskFlow</B>>; style="rounded"; color="#1B3A5C";
+    subgraph cluster_a { label="Conta"; style="rounded,dashed"; color="#9CA3AF"; uc1 [label="UC01 Criar conta"]; uc2 [label="UC02 Entrar"]; uc3 [label="UC03 Sair"]; uc13 [label="UC13 Editar rotina"]; }
+    subgraph cluster_t { label="Tarefas"; style="rounded,dashed"; color="#9CA3AF"; uc4 [label="UC04 Criar/editar tarefa"]; uc5 [label="UC05 Listar e filtrar"]; uc6 [label="UC06 Concluir/excluir"]; }
+    subgraph cluster_p { label="Foco"; style="rounded,dashed"; color="#9CA3AF"; uc7 [label="UC07 Controlar timer\n(iniciar, pausar, +15 min, cancelar)"]; uc8 [label="UC08 Registrar sessão"]; }
+    subgraph cluster_o { label="Acompanhamento"; style="rounded,dashed"; color="#9CA3AF"; uc10 [label="UC10 Consultar perfil"]; uc12 [label="UC12 Histórico e estatísticas"]; uc14 [label="UC14 Exportar relatório PDF"]; }
+    uc11 [label="UC11 Priorizar com IA", fillcolor="#FDF2F1", color="#D63B2F"];
+    uc9 [label="UC09 Sincronizar dados", fillcolor="#FFF7ED", color="#B45309"];
+  }
+  edge [arrowhead=none, color="#6B7280"];
+  user -> {uc1 uc2 uc3 uc13 uc4 uc5 uc6 uc7 uc10 uc12 uc14 uc11};
+  uc7 -> uc8 [style=dashed, arrowhead=vee, label="«include»"];
+  uc11 -> uc9 [style=dashed, arrowhead=vee, label="«include»"];
+  uc9 -> apiA; uc11 -> apiA; apiA -> aiA [style=dashed];
+  note [shape=note, style=filled, fillcolor="#F9FAFB", color="#9CA3AF", fontsize=9, label="UC01, UC02 e UC13 também\nchamam a TaskFlow API\n(cadastro, login e rotina)."];
+  apiA -> note [style=dotted, arrowhead=none];
+}
