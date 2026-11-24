@@ -70,20 +70,20 @@ A branch de integração é a `develop`; a `main` recebe só versões estáveis.
 
 ## Entrega (.zip)
 
-Não inclua `node_modules/` (penalidade de –3 pontos), `.env`, `app/android/`, `app/ios/` nem `api/target/`. Da pasta acima do projeto:
+Não inclua `node_modules/` (penalidade de –3 pontos) nem `app/android/`, `app/ios/` ou `api/target/`. Da pasta acima do projeto:
 
 ```bash
-zip -r TaskFlow.zip TaskFlow -x "*/node_modules/*" "*/.git/*" "*/.env" "*/target/*" "*/android/*" "*/ios/*" "*/.expo/*" "*/.venv/*" "*/.maestri/*" "*.DS_Store"
+zip -r TaskFlow.zip TaskFlow -x "*/node_modules/*" "*/.git/*" "*/target/*" "*/android/*" "*/ios/*" "*/.expo/*" "*/.venv/*" "*/.maestri/*" "*.DS_Store"
 ```
 
 ## Créditos
 
-| Nome | Papel |
-|---|---|
-| Micael Martins | Desenvolvimento Frontend e design de interfaces |
-| Murilo Ribeiro da Silveira | Desenvolvimento Backend |
-| Paulo Henrique | Desenvolvedor |
-| Pedro Henrique Borges Carvalho Braga | Desenvolvimento Backend |
-| Pedro Rodrigues Teixeira | Desenvolvedor |
-| Vinícius de Oliveira | Desenvolvimento Frontend e design de interfaces |
-| Vinicius Ryosuke Otsuka | Desenvolvedor |
+| Nome | Matrícula | Papel |
+|---|---|---|
+| Micael Martins de Moura | UC23101275 | Desenvolvimento Frontend e design de interfaces |
+| Murilo Ribeiro da Silveira | UC23102602 | Desenvolvimento Backend |
+| Paulo Henrique Costa Alves | UC23101336 | Desenvolvedor |
+| Pedro Henrique Borges Carvalho Braga | UC23102093 | Desenvolvimento Backend |
+| Pedro Rodrigues Teixeira | UC23102185 | Desenvolvedor |
+| Vinícius de Oliveira | UC23101429 | Desenvolvimento Frontend e design de interfaces |
+| Vinicius Ryosuke Otsuka | UC23101612 | Desenvolvedor |
