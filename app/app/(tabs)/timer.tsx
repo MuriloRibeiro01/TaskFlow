@@ -223,20 +223,24 @@ export default function Timer() {
           </>
         ) : (
           <>
-            <View style={styles.selectedTasksHeading}>
-              <Text style={styles.sectionTitle}>TAREFA SELECIONADA</Text>
-              <Text style={styles.sessionSummary}>
-                {formatSessionDuration(totalPomodoros, setupFocusSeconds)}
-              </Text>
-            </View>
-            {pendingSelectedTasks.map((task) => (
-              <TaskSelectionCard
-                key={task.id}
-                task={task}
-                selected
-                active={mode === 'focus' && task.id === activeTask?.id}
-              />
-            ))}
+            {pendingSelectedTasks.length > 0 && (
+              <>
+                <View style={styles.selectedTasksHeading}>
+                  <Text style={styles.sectionTitle}>TAREFA SELECIONADA</Text>
+                  <Text style={styles.sessionSummary}>
+                    {formatSessionDuration(totalPomodoros, setupFocusSeconds)}
+                  </Text>
+                </View>
+                {pendingSelectedTasks.map((task) => (
+                  <TaskSelectionCard
+                    key={task.id}
+                    task={task}
+                    selected
+                    active={mode === 'focus' && task.id === activeTask?.id}
+                  />
+                ))}
+              </>
+            )}
             {completedSelectedTasks.length > 0 && (
               <>
                 <Text style={styles.completedSectionTitle}>TAREFA CONCLUÍDA</Text>
