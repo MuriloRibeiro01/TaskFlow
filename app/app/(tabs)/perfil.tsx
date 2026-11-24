@@ -28,13 +28,13 @@ export default function Perfil() {
     avatarUrl,
     fullName,
     email,
-    provider,
     initials,
     handleSignOut,
     setColorScheme,
     navigateToHistorico,
     navigateToEstatisticas,
-    showExportToast,
+    exportPdf,
+    isExporting,
   } = useProfileViewModel();
 
   return (
@@ -62,7 +62,6 @@ export default function Perfil() {
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{fullName}</Text>
             {email ? <Text style={styles.userEmail}>{email}</Text> : null}
-            {provider ? <Text style={styles.userProvider}>{provider}</Text> : null}
           </View>
         </View>
 
@@ -195,7 +194,7 @@ export default function Perfil() {
                   accessibilityRole="button"
                   accessibilityLabel="Diminuir duração da pausa"
                   style={styles.stepperButton}
-                  onPress={() => setBreakDuration((prev) => Math.max(1, prev - 5))}
+                  onPress={() => setBreakDuration((prev) => Math.max(1, prev - 1))}
                 >
                   <Text style={styles.stepperButtonText}>−</Text>
                 </Pressable>
@@ -204,7 +203,7 @@ export default function Perfil() {
                   accessibilityRole="button"
                   accessibilityLabel="Aumentar duração da pausa"
                   style={styles.stepperButton}
-                  onPress={() => setBreakDuration((prev) => Math.min(30, prev + 5))}
+                  onPress={() => setBreakDuration((prev) => Math.min(30, prev + 1))}
                 >
                   <Text style={styles.stepperButtonText}>+</Text>
                 </Pressable>
@@ -313,10 +312,12 @@ export default function Perfil() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Exportar relatório (PDF)"
+            accessibilityState={{ busy: isExporting }}
             style={styles.exportButton}
-            onPress={showExportToast}
+            onPress={exportPdf}
+            disabled={isExporting}
           >
-            <Text style={styles.exportButtonText}>Exportar relatório (PDF)</Text>
+            <Text style={styles.exportButtonText}>{isExporting ? 'Gerando PDF...' : 'Exportar relatório (PDF)'}</Text>
           </Pressable>
 
           <Pressable
@@ -403,13 +404,6 @@ function createStyles(colors: ColorTheme) {
       fontSize: 9,
       letterSpacing: 0.06,
       color: colors.cinza,
-    },
-    userProvider: {
-      fontFamily: Fonts.mono,
-      fontSize: 8,
-      letterSpacing: 0.14,
-      color: colors.cinza,
-      textTransform: 'uppercase',
     },
     routineInput: {
       minHeight: 96,

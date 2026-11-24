@@ -8,6 +8,8 @@ import { useAuth } from '@/database/context/auth_context';
 import { useToast } from '@/components/notifications/Toast';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { useTheme } from '@/hooks/useTheme';
+import { getSettings, saveSettings, Settings } from '@/database/settings';
+import { exportReport } from '@/services/reportService';
 
 function getInitials(name?: string | null): string {
   if (!name) return 'U';
@@ -24,10 +26,9 @@ export function useProfileViewModel() {
   const netInfo = useNetInfo();
 
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [focusDuration, setFocusDuration] = useState(25);
-  const [breakDuration, setBreakDuration] = useState(5);
-  const [soundOn, setSoundOn] = useState(true);
-  const [vibOn, setVibOn] = useState(true);
+  const [settings, setSettings] = useState<Settings>(getSettings);
+  const [isExporting, setIsExporting] = useState(false);
+  const updateSettings = (patch: Partial<Settings>) => setSettings(saveSettings(patch));
   const [routine, setRoutine] = useState('');
   const [savedRoutine, setSavedRoutine] = useState('');
 
@@ -68,13 +69,23 @@ export function useProfileViewModel() {
   const isOnline = netInfo.isConnected === true;
   const syncMeta = isOnline ? 'Sincronizado' : 'Sem conexão';
 
-  const avatarUrl = user?.user_metadata?.avatar_url;
-  const fullName = user?.user_metadata?.full_name ?? 'Usuário';
+  const avatarUrl = user?.avatarUrl ?? undefined;
   const email = user?.email ?? '';
-  const provider = String(
-    user?.app_metadata?.provider ?? user?.identities?.[0]?.provider ?? ''
-  ).toUpperCase();
+  // Contas criadas por e-mail não têm nome: usa a parte antes do @
+  const fullName = user?.displayName?.trim() || email.split('@')[0] || 'Usuário';
   const initials = getInitials(fullName);
+
+  const exportPdf = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      await exportReport(tasks, fullName);
+    } catch {
+      showToast('Não foi possível gerar o PDF', 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return {
     colorScheme,
@@ -82,14 +93,14 @@ export function useProfileViewModel() {
     routine,
     setRoutine,
     saveRoutine,
-    focusDuration,
-    setFocusDuration,
-    breakDuration,
-    setBreakDuration,
-    soundOn,
-    setSoundOn,
-    vibOn,
-    setVibOn,
+    focusDuration: settings.focusMinutes,
+    setFocusDuration: (next: (prev: number) => number) => updateSettings({ focusMinutes: next(settings.focusMinutes) }),
+    breakDuration: settings.breakMinutes,
+    setBreakDuration: (next: (prev: number) => number) => updateSettings({ breakMinutes: next(settings.breakMinutes) }),
+    soundOn: settings.sound,
+    setSoundOn: (next: (prev: boolean) => boolean) => updateSettings({ sound: next(settings.sound) }),
+    vibOn: settings.vibration,
+    setVibOn: (next: (prev: boolean) => boolean) => updateSettings({ vibration: next(settings.vibration) }),
     pomToday,
     doneToday,
     isOnline,
@@ -97,12 +108,12 @@ export function useProfileViewModel() {
     avatarUrl,
     fullName,
     email,
-    provider,
     initials,
     handleSignOut,
     setColorScheme: Appearance.setColorScheme,
     navigateToHistorico: () => router.push('/historico'),
     navigateToEstatisticas: () => router.push('/estatisticas'),
-    showExportToast: () => showToast('Em breve', 'info'),
+    exportPdf,
+    isExporting,
   };
 }

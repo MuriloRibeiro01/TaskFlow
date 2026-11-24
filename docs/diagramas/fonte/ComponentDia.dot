@@ -1,0 +1,26 @@
+digraph G {
+  rankdir=TB;
+  graph [fontname="Inter", fontsize=12, bgcolor="white", pad=0.3, nodesep=0.35, ranksep=0.45, labeljust=l];
+  node  [fontname="Inter", fontsize=11, shape=box, style="rounded,filled", fillcolor="#FFFFFF", color="#1B3A5C", penwidth=1.2, margin="0.16,0.08"];
+  edge  [fontname="Inter", fontsize=9, color="#4B5563", arrowsize=0.7, fontcolor="#4B5563"];
+  label=<<B>TaskFlow · Componentes do app (MVVM)</B><BR/><FONT POINT-SIZE="10" COLOR="#6B7280">Telas → ViewModels → dados. Versão 3.0, novembro de 2026.</FONT>>; labelloc=t; fontsize=16;
+  subgraph cluster_v { label=<<B>View</B> · app/app/>; style="rounded,filled"; fillcolor="#F3F6FA"; color="#1B3A5C";
+    login [label="LoginScreen\nlogin.tsx"]; home [label="HomeScreen\n(tabs)/index.tsx"]; form [label="TaskFormScreen\nnova-tarefa.tsx"];
+    timer [label="TimerScreen\n(tabs)/timer.tsx"]; perfil [label="ProfileScreen\n(tabs)/perfil.tsx"]; prio [label="PrioritizationScreen\npriorizar.tsx"];
+    hist [label="HistoryScreen\nhistorico.tsx"]; stats [label="StatsScreen\nestatisticas.tsx"];
+  }
+  subgraph cluster_vm { label=<<B>ViewModel</B> · hooks/ e context/>; style="rounded,filled"; fillcolor="#FDF2F1"; color="#D63B2F";
+    auth [label="AuthContext"]; tl [label="useTaskList"]; tv [label="useTimerViewModel"]; pv [label="useProfileViewModel"]; prv [label="usePrioritizationViewModel"];
+  }
+  subgraph cluster_m { label=<<B>Model</B> · database/ e services/>; style="rounded,filled"; fillcolor="#F9FAFB"; color="#6B7280";
+    tasks [label="tasks.ts\npomodoro.ts"]; sq [label="SQLite\nschemas.ts", shape=cylinder, style=filled, fillcolor="#FFF7ED", color="#B45309"];
+    cl [label="api/client.ts\nsecure_storage.ts"]; sy [label="SyncService\nsync_trigger · conflict.resolver"];
+    ps [label="prioritization.service\nai-prioritizer · compare"]; set [label="settings.ts\n(preferências)"];
+    ns [label="notificationService\nreportService (PDF)"]; net [label="network.service\n(NetInfo)"];
+  }
+  login -> auth; home -> tl; form -> tl; timer -> tv; perfil -> pv; prio -> prv; hist -> tasks; stats -> tasks;
+  auth -> cl; auth -> sy; tl -> tasks; tv -> tasks; tv -> set; tv -> ns; pv -> set; pv -> ns; pv -> cl; pv -> net;
+  prv -> ps; prv -> net; ps -> cl; tasks -> sq; ps -> sq; sy -> sq; sy -> cl;
+  api [label="TaskFlow API", shape=box, style="rounded,filled", fillcolor="#1B3A5C", fontcolor="white"];
+  cl -> api [color="#D63B2F", penwidth=1.5, label="HTTP + JWT", fontcolor="#D63B2F"];
+}

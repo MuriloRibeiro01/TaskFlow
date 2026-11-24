@@ -1,0 +1,36 @@
+digraph G {
+  rankdir=TB; compound=true; newrank=true;
+  graph [fontname="Inter", fontsize=12, bgcolor="white", pad=0.3, nodesep=0.35, ranksep=0.45, labeljust=l];
+  node  [fontname="Inter", fontsize=11, shape=box, style="rounded,filled", fillcolor="#FFFFFF", color="#1B3A5C", penwidth=1.2, margin="0.16,0.08"];
+  edge  [fontname="Inter", fontsize=9, color="#4B5563", arrowsize=0.7, fontcolor="#4B5563"];
+  label=<<B>TaskFlow · Arquitetura do sistema</B><BR/><FONT POINT-SIZE="10" COLOR="#6B7280">App em MVVM, API em Clean Architecture. Versão 3.0, novembro de 2026.</FONT>>; labelloc=t; fontsize=16;
+  subgraph cluster_app { label=<<B>App mobile</B> · Expo SDK 57, React Native 0.86 (app/)>; style="rounded,filled"; fillcolor="#F3F6FA"; color="#1B3A5C";
+    view [label=<<B>View</B><BR/><FONT POINT-SIZE="9">Telas Expo Router (app/app/)</FONT>>];
+    vm   [label=<<B>ViewModel</B><BR/><FONT POINT-SIZE="9">hooks/: useTaskList, useTimerViewModel,<BR/>useProfileViewModel, usePrioritizationViewModel<BR/>+ AuthContext</FONT>>];
+    subgraph cluster_model { label=<<B>Model</B> (database/ e services/)>; style="rounded,dashed"; color="#6B7280"; fillcolor="#FFFFFF";
+      sqlite [label=<<B>SQLite</B><BR/><FONT POINT-SIZE="9">expo-sqlite · offline-first</FONT>>, fillcolor="#FFF7ED", color="#B45309"];
+      client [label=<<B>Cliente HTTP</B><BR/><FONT POINT-SIZE="9">api/client.ts + JWT (SecureStore)</FONT>>];
+      sync   [label=<<B>SyncService</B><BR/><FONT POINT-SIZE="9">sync/ · pending_deletes</FONT>>];
+      svc    [label=<<B>Serviços do aparelho</B><BR/><FONT POINT-SIZE="9">notificações, relatório PDF,<BR/>preferências</FONT>>];
+    }
+    view -> vm [label="estado e ações"];
+    {rank=same; view; vm;}
+    vm -> sqlite; vm -> client; vm -> svc;
+    sync -> sqlite; sync -> client;
+  }
+  subgraph cluster_api { label=<<B>API REST</B> · Spring Boot 4.1, Java 17 (api/) · Docker Compose>; style="rounded,filled"; fillcolor="#F3F6FA"; color="#1B3A5C";
+    pres [label=<<B>presentation</B><BR/><FONT POINT-SIZE="9">controllers REST</FONT>>];
+    appl [label=<<B>application</B><BR/><FONT POINT-SIZE="9">serviços e DTOs</FONT>>];
+    dom  [label=<<B>domain</B><BR/><FONT POINT-SIZE="9">entidades e enums</FONT>>];
+    infra[label=<<B>infrastructure</B><BR/><FONT POINT-SIZE="9">repositórios JPA, cliente Anthropic</FONT>>];
+    model[label=<<B>Modelo de prioridade</B><BR/><FONT POINT-SIZE="9">modelo-prioridade.json</FONT>>, fillcolor="#ECFDF5", color="#15803D"];
+    pres -> appl; appl -> dom; infra -> dom; appl -> infra [style=dashed, label="via interfaces"]; appl -> model;
+  }
+  db  [label=<<B>PostgreSQL 15</B><BR/><FONT POINT-SIZE="9">Flyway V1 a V5</FONT>>, shape=cylinder, style=filled, fillcolor="#FFF7ED", color="#B45309"];
+  ai  [label=<<B>Anthropic (Claude)</B><BR/><FONT POINT-SIZE="9">opcional, com ANTHROPIC_API_KEY</FONT>>, style="rounded,dashed,filled", fillcolor="#FFFFFF"];
+  ml  [label=<<B>ml/</B><BR/><FONT POINT-SIZE="9">treino TF-IDF + regressão logística</FONT>>, fillcolor="#ECFDF5", color="#15803D"];
+  client -> pres [label="HTTPS + JWT", lhead=cluster_api, color="#D63B2F", fontcolor="#D63B2F", penwidth=1.6];
+  infra -> db [label="JPA"];
+  infra -> ai [label="HTTPS", style=dashed];
+  ml -> model [label="gera", style=dashed];
+}

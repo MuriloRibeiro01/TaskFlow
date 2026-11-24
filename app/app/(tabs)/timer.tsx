@@ -85,6 +85,7 @@ export default function Timer() {
     hasStarted,
     isFinished,
     isBreak,
+    mode,
     completedCycles,
     totalPomodoros,
     setupFocusSeconds,
@@ -99,7 +100,8 @@ export default function Timer() {
     startOrResumeTimer,
     incrementCycle,
     cancelTimer,
-    setIsRunning,
+    pauseTimer,
+    breakMinutes,
     decreaseSetupDuration,
     increaseSetupDuration,
   } = useTimerViewModel();
@@ -133,7 +135,7 @@ export default function Timer() {
             <View style={styles.timerControls}>
               <Pressable
                 style={styles.primaryControl}
-                onPress={isRunning ? () => setIsRunning(false) : startOrResumeTimer}
+                onPress={isRunning ? pauseTimer : startOrResumeTimer}
               >
                 <Text style={styles.primaryControlText}>{isRunning ? 'Pausar' : 'Retomar'}</Text>
               </Pressable>
@@ -148,7 +150,7 @@ export default function Timer() {
                 <Text style={styles.cancelControlText}>Cancelar</Text>
               </Pressable>
             </View>
-            <Text style={styles.intervalLabel}>INTERVALO: 5 MINUTOS</Text>
+            <Text style={styles.intervalLabel}>INTERVALO: {breakMinutes} {breakMinutes === 1 ? 'MINUTO' : 'MINUTOS'}</Text>
             <View style={styles.cycleRow}>
               {Array.from({ length: totalPomodoros }).map((_, index) => (
                 <View
@@ -184,7 +186,7 @@ export default function Timer() {
                 <Text style={styles.durationButtonText}>+</Text>
               </Pressable>
             </View>
-            <Text style={styles.intervalLabel}>INTERVALO: 5 MINUTOS</Text>
+            <Text style={styles.intervalLabel}>INTERVALO: {breakMinutes} {breakMinutes === 1 ? 'MINUTO' : 'MINUTOS'}</Text>
           </>
         )}
 

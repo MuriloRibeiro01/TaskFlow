@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from 'expo-router';
 import { getAllTasks } from '@/database/tasks';
 import { recordCompletedPomodoro } from '@/database/pomodoro';
 import { Task as DBTask } from '@/types/task.types';
 import { useAuth } from '@/database/context/auth_context';
+import { getSettings } from '@/database/settings';
+import { cancelPhaseEnds, schedulePhaseEnds } from '@/services/notificationService';
 
 const FOCUS_SECONDS = 25 * 60;
-const BREAK_SECONDS = 5 * 60;
 const INCREMENT_SECONDS = 15 * 60;
 const SETUP_STEP_SECONDS = 5 * 60;
 const MIN_FOCUS_SECONDS = 5 * 60;
@@ -46,6 +48,33 @@ export function formatTime(seconds: number) {
   return `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
 }
 
+export function secondsUntil(endAt: number, now: number) {
+  return Math.max(0, Math.ceil((endAt - now) / 1000));
+}
+
+// Fins de fase daqui em diante (em segundos a partir de agora), até o último foco da sessão, que não tem pausa depois.
+export function phaseSchedule(
+  mode: TimerMode, remainingSeconds: number, focusLeft: number, focusSeconds: number, breakSeconds: number
+) {
+  const ends: { phase: TimerMode; seconds: number }[] = [];
+  let phase = mode;
+  let at = remainingSeconds;
+  let left = focusLeft;
+  while (left > 0) {
+    ends.push({ phase, seconds: at });
+    if (phase === 'focus') {
+      left -= 1;
+      if (left === 0) break;
+      phase = 'break';
+      at += breakSeconds;
+    } else {
+      phase = 'focus';
+      at += focusSeconds;
+    }
+  }
+  return ends;
+}
+
 export function formatSessionDuration(pomodoros: number, focusSeconds = FOCUS_SECONDS) {
   const minutes = Math.round((pomodoros * focusSeconds) / 60);
   const hours = Math.floor(minutes / 60);
@@ -67,6 +96,40 @@ export function useTimerViewModel() {
   const [setupFocusSeconds, setSetupFocusSeconds] = useState(FOCUS_SECONDS);
   const [cycleTotalSeconds, setCycleTotalSeconds] = useState(FOCUS_SECONDS);
   const [remainingSeconds, setRemainingSeconds] = useState(FOCUS_SECONDS);
+  const [breakSeconds, setBreakSeconds] = useState(getSettings().breakMinutes * 60);
+  // Fim previsto da fase em andamento: o tempo restante sai dele, então o timer não para em segundo plano
+  const endAtRef = useRef<number | null>(null);
+  const notificationIdsRef = useRef<string[]>([]);
+  const scheduleTokenRef = useRef(0);
+
+  const cancelNotifications = useCallback(() => {
+    scheduleTokenRef.current += 1;
+    cancelPhaseEnds(notificationIdsRef.current);
+    notificationIdsRef.current = [];
+  }, []);
+
+  const disarm = useCallback(() => {
+    endAtRef.current = null;
+    cancelNotifications();
+  }, [cancelNotifications]);
+
+  // startAt = fim da fase anterior: ao voltar do segundo plano, as fases que já passaram fecham em sequência
+  const arm = useCallback((seconds: number, startAt = Date.now()) => {
+    endAtRef.current = startAt + seconds * 1000;
+    setRemainingSeconds(secondsUntil(endAtRef.current, Date.now()));
+  }, []);
+
+  const scheduleNotifications = (phase: TimerMode, remaining: number, focusLeft: number) => {
+    cancelNotifications();
+    const token = scheduleTokenRef.current;
+    schedulePhaseEnds(phaseSchedule(phase, remaining, focusLeft, setupFocusSeconds, breakSeconds)).then((ids) => {
+      // pausou ou mudou enquanto agendava: esses avisos já não valem
+      if (scheduleTokenRef.current === token) notificationIdsRef.current = ids;
+      else cancelPhaseEnds(ids);
+    });
+  };
+
+  useEffect(() => disarm, [disarm]);
 
   useFocusEffect(
     useCallback(() => {
@@ -76,7 +139,10 @@ export function useTimerViewModel() {
         .map(toTimerTask);
       setTodayTasks(tasks);
       setSelectedTaskIds((ids) => ids.filter((id) => tasks.some((task) => task.id === id)));
-    }, [user?.id])
+      const settings = getSettings();
+      setBreakSeconds(settings.breakMinutes * 60);
+      if (!hasStarted) setSetupFocusSeconds(settings.focusMinutes * 60);
+    }, [user?.id, hasStarted])
   );
 
   const selectedTasks = useMemo(
@@ -118,7 +184,7 @@ export function useTimerViewModel() {
   useEffect(() => {
     if (!isRunning || isFinished) return;
     const interval = setInterval(() => {
-      setRemainingSeconds((seconds) => Math.max(0, seconds - 1));
+      if (endAtRef.current !== null) setRemainingSeconds(secondsUntil(endAtRef.current, Date.now()));
     }, 1000);
     return () => clearInterval(interval);
   }, [isFinished, isRunning]);
@@ -126,15 +192,22 @@ export function useTimerViewModel() {
   useEffect(() => {
     if (!isRunning || isFinished || remainingSeconds > 0) return;
 
+    const endedAt = endAtRef.current ?? Date.now();
+    // vibra só no fim que acabou de acontecer, não nos que já tinham passado com o app fechado
+    if (Date.now() - endedAt < 2000 && getSettings().vibration) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+    }
+
     if (mode === 'break') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setMode('focus');
       setCycleTotalSeconds(setupFocusSeconds);
-      setRemainingSeconds(setupFocusSeconds);
+      arm(setupFocusSeconds, endedAt);
       return;
     }
 
     if (!activeTask) {
+      disarm();
       setIsRunning(false);
       setIsFinished(true);
       return;
@@ -158,16 +231,20 @@ export function useTimerViewModel() {
     setCompletedCycles(nextCompletedCycles);
 
     if (nextCompletedCycles >= sessionTotalPomodoros) {
+      disarm();
       setIsRunning(false);
       setIsFinished(true);
       return;
     }
 
     setMode('break');
-    setCycleTotalSeconds(BREAK_SECONDS);
-    setRemainingSeconds(BREAK_SECONDS);
+    setCycleTotalSeconds(breakSeconds);
+    arm(breakSeconds, endedAt);
   }, [
     activeTask,
+    arm,
+    breakSeconds,
+    disarm,
     completedCycles,
     cycleTotalSeconds,
     isFinished,
@@ -191,20 +268,35 @@ export function useTimerViewModel() {
       setSessionTotalPomodoros(availablePomodoros);
       setCompletedCycles(0);
       setCycleTotalSeconds(setupFocusSeconds);
-      setRemainingSeconds(setupFocusSeconds);
+      arm(setupFocusSeconds);
+      scheduleNotifications('focus', setupFocusSeconds, availablePomodoros);
+    } else {
+      arm(remainingSeconds);
+      scheduleNotifications(mode, remainingSeconds, sessionTotalPomodoros - completedCycles);
     }
     setHasStarted(true);
     setIsFinished(false);
     setIsRunning(true);
   };
 
+  const pauseTimer = () => {
+    disarm();
+    setIsRunning(false);
+  };
+
   const incrementCycle = () => {
     if (isBreak || isFinished) return;
-    setRemainingSeconds((seconds) => seconds + INCREMENT_SECONDS);
     setCycleTotalSeconds((seconds) => seconds + INCREMENT_SECONDS);
+    if (isRunning) {
+      arm(remainingSeconds + INCREMENT_SECONDS);
+      scheduleNotifications(mode, remainingSeconds + INCREMENT_SECONDS, sessionTotalPomodoros - completedCycles);
+    } else {
+      setRemainingSeconds((seconds) => seconds + INCREMENT_SECONDS);
+    }
   };
 
   const cancelTimer = () => {
+    disarm();
     setIsRunning(false);
     setHasStarted(false);
     setIsFinished(false);
@@ -241,7 +333,8 @@ export function useTimerViewModel() {
     startOrResumeTimer,
     incrementCycle,
     cancelTimer,
-    setIsRunning,
+    pauseTimer,
+    breakMinutes: Math.round(breakSeconds / 60),
     decreaseSetupDuration,
     increaseSetupDuration,
     formatTime,

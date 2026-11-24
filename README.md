@@ -43,7 +43,7 @@ Cada parte tem o próprio README com pré-requisitos, dependências, variáveis 
 
 ```
 TaskFlow/
-├── docs/          documentação (integrantes, vídeo, BMC, DADOS, diagramas, protótipos)
+├── docs/          documentação v3.0 (Visão, Requisitos, Arquitetura, DADOS, BMC, diagramas) e histórico
 ├── api/           API Spring Boot: única API, consumida pelo app
 ├── app/           app mobile (Android e iOS)
 ├── ml/            treino do modelo de prioridade (gera um JSON usado pela API)
