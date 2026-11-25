@@ -14,7 +14,7 @@ import {
 } from './doctor/lib.mjs';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-export const APP = join(ROOT, 'taskflow-app');
+export const APP = join(ROOT, 'app');
 export const PACKAGE = 'br.edu.ucb.taskflow';
 const OLD_PACKAGE = 'com.taskflow.app';
 export const APK_META = join(ROOT, 'dist', 'taskflow-apresentacao.json');
@@ -83,7 +83,7 @@ async function httpStatus(url, timeoutMs = 5000) {
 }
 
 function latestMigration() {
-    const dir = join(ROOT, 'taskflow-api-spring', 'src', 'main', 'resources', 'db', 'migration');
+    const dir = join(ROOT, 'api', 'src', 'main', 'resources', 'db', 'migration');
     if (!existsSync(dir)) return null;
     const versions = readdirSync(dir).map((f) => /^V(\d+)__/.exec(f)?.[1]).filter(Boolean).map(Number);
     return versions.length ? Math.max(...versions) : null;
@@ -127,9 +127,9 @@ function checkEnvFiles(ctx, fix) {
     ctx.rootEnv = readEnv(rootFile);
     ctx.appEnv = readEnv(appFile);
     if (!ctx.rootEnv) return [error('.env da raiz não existe', 'copie .env.example para .env e preencha')];
-    if (!ctx.appEnv) return [error('taskflow-app/.env não existe', 'crie com EXPO_PUBLIC_API_URL e EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID')];
+    if (!ctx.appEnv) return [error('app/.env não existe', 'crie com EXPO_PUBLIC_API_URL')];
 
-    const issues = [...checkRootEnv(ctx.rootEnv), ...checkAppEnv(ctx.appEnv, ctx.rootEnv)];
+    const issues = [...checkRootEnv(ctx.rootEnv), ...checkAppEnv(ctx.appEnv)];
 
     // IP: o Wi-Fi do dia pode dar outro IP, e o app (e o APK) ficariam apontando para o lugar errado.
     ctx.ip = currentIp();
@@ -145,7 +145,7 @@ function checkEnvFiles(ctx, fix) {
             ctx.envChanged = true;
             issues.push(ok(`EXPO_PUBLIC_API_URL atualizado para ${novo} (o IP mudou)`));
         } else {
-            issues.push(error(`EXPO_PUBLIC_API_URL aponta para ${host}, mas o IP atual da máquina é ${ctx.ip}`, '--fix atualiza o taskflow-app/.env'));
+            issues.push(error(`EXPO_PUBLIC_API_URL aponta para ${host}, mas o IP atual da máquina é ${ctx.ip}`, '--fix atualiza o app/.env'));
         }
     } else if (host) {
         issues.push(ok(`IP da máquina ${ctx.ip} bate com EXPO_PUBLIC_API_URL`));
@@ -190,7 +190,7 @@ async function checkContainers(ctx, fix) {
 
     // Imagem da API mais antiga que o código: a API rodaria uma versão velha.
     const created = sh('docker image inspect taskflow-api -f "{{.Created}}"').out.trim();
-    const changed = sh('git log -1 --format=%cI -- taskflow-api-spring').out.trim();
+    const changed = sh('git log -1 --format=%cI -- api').out.trim();
     if (created && changed && new Date(created) < new Date(changed)) {
         if (fix) {
             process.stdout.write('   … imagem da API desatualizada: docker compose build api (alguns minutos)\n');
@@ -211,9 +211,6 @@ async function checkApi(ctx) {
     issues.push(status
         ? ok(`API respondendo em ${ctx.apiUrl}`)
         : error(`API não responde em ${ctx.apiUrl}`, 'veja: docker compose logs api'));
-
-    const google = await httpStatus(`${ctx.apiUrl}/auth/google`);
-    if (google === 503) issues.push(error('POST /auth/google responde 503: a API não tem GOOGLE_CLIENT_IDS', 'preencha no .env da raiz e rode docker compose up -d api'));
 
     const version = psql(ctx.rootEnv, 'select max(version)::int from flyway_schema_history');
     const expected = latestMigration();
@@ -282,8 +279,6 @@ function checkPresentationApk(ctx) {
     ctx.apkMeta = meta;
     if (ctx.apiUrl && meta.apiUrl !== ctx.apiUrl) {
         issues.push(error(`APK aponta para ${meta.apiUrl}, mas a API agora está em ${ctx.apiUrl}`, 'npm run apk (o endereço vai dentro do APK)'));
-    } else if (ctx.appEnv && meta.webClientId !== ctx.appEnv.get('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID')) {
-        issues.push(error('APK gerado com outro ID do Google', 'npm run apk'));
     } else {
         const commit = sh('git rev-parse --short HEAD').out.trim();
         issues.push(meta.commit === commit
@@ -300,7 +295,7 @@ function checkMetro(ctx) {
     if (!started) return [];
     const envChanged = statSync(join(APP, '.env')).mtime;
     if (ctx.envChanged || envChanged > new Date(started)) {
-        return [warn('O Metro foi iniciado antes da última mudança no taskflow-app/.env (está servindo os valores antigos)', 'pare o Metro e rode: npx expo start --dev-client --clear')];
+        return [warn('O Metro foi iniciado antes da última mudança no app/.env (está servindo os valores antigos)', 'pare o Metro e rode: npx expo start --clear')];
     }
     return [ok('Metro rodando com o .env atual')];
 }

@@ -22,7 +22,7 @@ services:
   # API Spring Boot
   api:
     build:
-      context: ./taskflow-api-spring
+      context: ./api
     container_name: taskflow-api
     restart: always
     ports:

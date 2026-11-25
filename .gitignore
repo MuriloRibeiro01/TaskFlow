@@ -30,6 +30,6 @@ ios/
 # Maestri (agentes internos — nunca commitar)
 .maestri/
 
-# Python (taskflow-ml)
+# Python (ml/)
 __pycache__/
 .pytest_cache/

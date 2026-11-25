@@ -1,0 +1,21 @@
+digraph G {
+  rankdir=TB;
+  graph [fontname="Inter", fontsize=12, bgcolor="white", pad=0.3, nodesep=0.35, ranksep=0.45, labeljust=l];
+  node  [fontname="Inter", fontsize=11, shape=box, style="rounded,filled", fillcolor="#FFFFFF", color="#1B3A5C", penwidth=1.2, margin="0.16,0.08"];
+  edge  [fontname="Inter", fontsize=9, color="#4B5563", arrowsize=0.7, fontcolor="#4B5563"];
+  label=<<B>TaskFlow · Fluxo principal do usuário</B><BR/><FONT POINT-SIZE="10" COLOR="#6B7280">Versão 3.0, novembro de 2026.</FONT>>; labelloc=t; fontsize=16;
+  node [width=3.4];
+  a [label=<<B>1 · Abre o app</B><BR/><FONT POINT-SIZE="9">sessão salva? vai para Tarefas, senão Login</FONT>>];
+  b [label=<<B>2 · Entra com e-mail e senha</B><BR/><FONT POINT-SIZE="9">ou cria a conta · API devolve JWT de 7 dias</FONT>>];
+  c [label=<<B>3 · Cria tarefas</B><BR/><FONT POINT-SIZE="9">título, prioridade, prazo, estimativa · grava no SQLite</FONT>>];
+  d [label=<<B>4 · Prioriza com IA (opcional)</B><BR/><FONT POINT-SIZE="9">responde importante/urgente · compara com a IA · Aplicar</FONT>>, fillcolor="#FDF2F1", color="#D63B2F"];
+  e [label=<<B>5 · Seleciona tarefas no Timer</B><BR/><FONT POINT-SIZE="9">uma ou várias do dia · ajusta a duração</FONT>>];
+  f [label=<<B>6 · Foca</B><BR/><FONT POINT-SIZE="9">pausar, +15 min, cancelar · avisos agendados para a sessão toda</FONT>>];
+  g [label=<<B>7 · Fim da fase</B><BR/><FONT POINT-SIZE="9">notificação e vibração · pomodoro registrado · pausa</FONT>>];
+  h [label=<<B>8 · Sessão concluída</B><BR/><FONT POINT-SIZE="9">tarefas concluídas ao atingir a estimativa</FONT>>];
+  i [label=<<B>9 · Sincroniza</B><BR/><FONT POINT-SIZE="9">automático ao reconectar e após cada gravação</FONT>>, fillcolor="#FFF7ED", color="#B45309"];
+  j [label=<<B>10 · Acompanha</B><BR/><FONT POINT-SIZE="9">histórico, estatísticas de 7 dias, relatório PDF</FONT>>];
+  a -> b -> c -> d -> e -> f -> g -> h -> i -> j;
+  c -> e [style=dashed, label="pula a priorização"];
+  g -> f [style=dashed, label="até o último pomodoro"];
+}
