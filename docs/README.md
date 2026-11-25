@@ -4,26 +4,27 @@
 
 Em ordem alfabética.
 
-| Nome completo | Matrícula |
-|---|---|
-| Micael Martins de Moura | UC23101275 |
-| Murilo Ribeiro da Silveira | UC23102602 |
-| Paulo Henrique Costa Alves | UC23101336 |
-| Pedro Henrique Borges Carvalho Braga | UC23102093 |
-| Pedro Rodrigues Teixeira | UC23102185 |
-| Vinícius de Oliveira | UC23101429 |
-| Vinicius Ryosuke Otsuka | UC23101612 |
+| Nome completo | Matrícula | Turma |
+|---|---|---|
+| Micael Martins de Moura | UC23101275 | Soluções Computacionais - GPE17M80586 |
+| Murilo Ribeiro da Silveira | UC23102602 | Soluções Computacionais - GPE17M80586 |
+| Paulo Henrique Costa Alves | UC23101336 | Soluções Computacionais - GPE17M80586 |
+| Pedro Henrique Borges Carvalho Braga | UC23102093 | Soluções Computacionais - GPE17M80586 |
+| Pedro Rodrigues Teixeira | UC23102185 | Soluções Computacionais - GPE17M80586 |
+| Vinicius Ryosuke Otsuka | UC23101612 | Soluções Computacionais - GPE17M80586 |
+
+Colaborou na etapa do 1º semestre, sem matrícula nesta turma: Vinícius de Oliveira.
 
 ## Vídeo de apresentação
 
-**YouTube (não listado):** PREENCHER_LINK
+**YouTube (não listado):** https://youtu.be/eU9862JfmQM
 
 ## Documentos (versão atual)
 
 Verificados contra o código em 24/11/2026.
 
 | Documento | Arquivo |
-|---|---|
+|---|---|---|
 | Documento de Visão v3.0 | [`TaskFlow_DocumentoDeVisao.docx`](TaskFlow_DocumentoDeVisao.docx) |
 | Documento de Requisitos v3.0 | [`TaskFlow_DocumentoDeRequisitos.docx`](TaskFlow_DocumentoDeRequisitos.docx) |
 | Documento de Arquitetura v3.0 | [`TaskFlow_DocumentoDeArquitetura.docx`](TaskFlow_DocumentoDeArquitetura.docx) |
